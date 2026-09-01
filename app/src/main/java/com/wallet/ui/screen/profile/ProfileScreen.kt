@@ -1,7 +1,9 @@
 package com.wallet.ui.screen.profile
 
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -70,6 +72,14 @@ fun ProfileScreen(viewModel: WalletViewModel) {
     var showRateSheet by remember { mutableStateOf(false) }
     var pendingWallpaperPage by remember { mutableStateOf<WallpaperPage?>(null) }
 
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.setNotificationsEnabled(true)
+        }
+    }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -127,10 +137,26 @@ fun ProfileScreen(viewModel: WalletViewModel) {
                         SettingsItem(
                             icon = Icons.Default.Notifications,
                             title = "消息通知",
-                            subtitle = "账单提醒与通知",
+                            subtitle = if (profile.notificationsEnabled) {
+                                "每天 10:00 推送当前总资产"
+                            } else {
+                                "已关闭"
+                            },
                             showSwitch = true,
-                            switchChecked = true,
-                            onSwitchChange = {}
+                            switchChecked = profile.notificationsEnabled,
+                            onSwitchChange = { enabled ->
+                                if (enabled) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        notificationPermissionLauncher.launch(
+                                            Manifest.permission.POST_NOTIFICATIONS
+                                        )
+                                    } else {
+                                        viewModel.setNotificationsEnabled(true)
+                                    }
+                                } else {
+                                    viewModel.setNotificationsEnabled(false)
+                                }
+                            }
                         ),
                         SettingsItem(
                             icon = Icons.Default.DarkMode,

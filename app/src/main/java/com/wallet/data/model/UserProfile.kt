@@ -5,6 +5,7 @@ data class UserProfile(
     val email: String = "",
     val currency: String = "CNY",
     val darkMode: Boolean = false,
+    val notificationsEnabled: Boolean = true,
     val usdToCnyRate: Double = 7.25,
     val accountingWallpaperUri: String? = null,
     val assetsWallpaperUri: String? = null,

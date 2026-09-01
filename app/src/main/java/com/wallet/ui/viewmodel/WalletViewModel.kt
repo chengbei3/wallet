@@ -1,18 +1,19 @@
 package com.wallet.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import com.wallet.data.model.Account
+import com.wallet.data.model.CurrencyType
 import com.wallet.data.model.Transaction
 import com.wallet.data.model.TransactionType
-import com.wallet.data.model.CurrencyType
 import com.wallet.data.model.UserProfile
 import com.wallet.data.model.WallpaperPage
 import com.wallet.data.repository.WalletRepository
 import kotlinx.coroutines.flow.StateFlow
 
-class WalletViewModel : ViewModel() {
+class WalletViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = WalletRepository()
+    private val repository = WalletRepository(application.applicationContext)
 
     val accounts: StateFlow<List<Account>> = repository.accounts
     val transactions: StateFlow<List<Transaction>> = repository.transactions
@@ -59,6 +60,10 @@ class WalletViewModel : ViewModel() {
 
     fun updateProfile(profile: UserProfile) {
         repository.updateProfile(profile)
+    }
+
+    fun setNotificationsEnabled(enabled: Boolean) {
+        repository.setNotificationsEnabled(enabled)
     }
 
     fun updateWallpaper(page: WallpaperPage, uri: String?) {
