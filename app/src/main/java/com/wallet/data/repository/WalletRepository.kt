@@ -7,8 +7,8 @@ import com.wallet.data.model.CurrencyType
 import com.wallet.data.model.Transaction
 import com.wallet.data.model.TransactionType
 import com.wallet.data.model.UserProfile
-import com.wallet.data.model.WallpaperPage
 import com.wallet.notification.NotificationScheduler
+import com.wallet.util.LauncherIconManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +38,7 @@ class WalletRepository(context: Context) {
 
     init {
         persistSnapshot()
+        LauncherIconManager.applyIcon(appContext, _userProfile.value.launcherIconStyle)
     }
 
     val totalAssets: Double
@@ -119,10 +120,13 @@ class WalletRepository(context: Context) {
     }
 
     fun updateProfile(profile: UserProfile) {
-        val previousNotificationsEnabled = _userProfile.value.notificationsEnabled
+        val previous = _userProfile.value
         _userProfile.value = profile
         preferences.saveProfile(profile)
-        updateNotificationSchedule(profile.notificationsEnabled, previousNotificationsEnabled)
+        updateNotificationSchedule(profile.notificationsEnabled, previous.notificationsEnabled)
+        if (profile.launcherIconStyle != previous.launcherIconStyle) {
+            LauncherIconManager.applyIcon(appContext, profile.launcherIconStyle)
+        }
         persistSnapshot()
     }
 

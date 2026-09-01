@@ -64,7 +64,10 @@ fun AssetsScreen(viewModel: WalletViewModel) {
     val usdTotal = accounts.filter { it.currency == CurrencyType.USD }.sumOf { it.balance }
     val cnyTotal = accounts.filter { it.currency == CurrencyType.CNY }.sumOf { it.balance }
 
-    WallpaperBackground(wallpaperUri = profile.assetsWallpaperUri) {
+    WallpaperBackground(
+        wallpaperUri = profile.assetsWallpaperUri,
+        overlayAlpha = profile.wallpaperOverlayAlpha
+    ) {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
@@ -149,10 +152,11 @@ private fun AccountItem(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
             modifier = Modifier

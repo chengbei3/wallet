@@ -64,7 +64,10 @@ fun AccountingScreen(viewModel: WalletViewModel) {
     val profile by viewModel.userProfile.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
 
-    WallpaperBackground(wallpaperUri = profile.accountingWallpaperUri) {
+    WallpaperBackground(
+        wallpaperUri = profile.accountingWallpaperUri,
+        overlayAlpha = profile.wallpaperOverlayAlpha
+    ) {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
@@ -167,10 +170,11 @@ private fun TransactionItem(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
             modifier = Modifier

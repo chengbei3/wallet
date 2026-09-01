@@ -19,12 +19,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
@@ -55,13 +61,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.wallet.data.model.UserProfile
 import com.wallet.data.model.WallpaperPage
 import com.wallet.ui.components.WallpaperBackground
 import com.wallet.ui.viewmodel.WalletViewModel
+
+private sealed class PendingImagePick {
+    data class Wallpaper(val page: WallpaperPage) : PendingImagePick()
+    data object Splash : PendingImagePick()
+    data object AppIcon : PendingImagePick()
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,7 +85,10 @@ fun ProfileScreen(viewModel: WalletViewModel) {
     val context = LocalContext.current
     var showEditSheet by remember { mutableStateOf(false) }
     var showRateSheet by remember { mutableStateOf(false) }
-    var pendingWallpaperPage by remember { mutableStateOf<WallpaperPage?>(null) }
+    var showFontScaleSheet by remember { mutableStateOf(false) }
+    var showOverlaySheet by remember { mutableStateOf(false) }
+    var showIconSheet by remember { mutableStateOf(false) }
+    var pendingImagePick by remember { mutableStateOf<PendingImagePick?>(null) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -92,14 +110,27 @@ fun ProfileScreen(viewModel: WalletViewModel) {
             } catch (_: SecurityException) {
                 // 部分 URI 不支持持久化权限，仍可临时使用
             }
-            pendingWallpaperPage?.let { page ->
-                viewModel.updateWallpaper(page, uri.toString())
+            pendingImagePick?.let { target ->
+                when (target) {
+                    is PendingImagePick.Wallpaper -> {
+                        viewModel.updateWallpaper(target.page, uri.toString())
+                    }
+                    PendingImagePick.Splash -> {
+                        viewModel.updateProfile(profile.copy(splashImageUri = uri.toString()))
+                    }
+                    PendingImagePick.AppIcon -> {
+                        viewModel.updateProfile(profile.copy(customAppIconUri = uri.toString()))
+                    }
+                }
             }
         }
-        pendingWallpaperPage = null
+        pendingImagePick = null
     }
 
-    WallpaperBackground(wallpaperUri = profile.profileWallpaperUri) {
+    WallpaperBackground(
+        wallpaperUri = profile.profileWallpaperUri,
+        overlayAlpha = profile.wallpaperOverlayAlpha
+    ) {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
@@ -161,12 +192,51 @@ fun ProfileScreen(viewModel: WalletViewModel) {
                         SettingsItem(
                             icon = Icons.Default.DarkMode,
                             title = "深色模式",
-                            subtitle = "跟随系统",
+                            subtitle = if (profile.darkMode) "已开启深色主题" else "关闭时跟随系统",
                             showSwitch = true,
                             switchChecked = profile.darkMode,
                             onSwitchChange = {
                                 viewModel.updateProfile(profile.copy(darkMode = it))
                             }
+                        )
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                SettingsSection(
+                    title = "个性化",
+                    items = listOf(
+                        SettingsItem(
+                            icon = Icons.Default.FormatSize,
+                            title = "字体大小",
+                            subtitle = profile.fontScale.label,
+                            onClick = { showFontScaleSheet = true }
+                        ),
+                        SettingsItem(
+                            icon = Icons.Default.Layers,
+                            title = "壁纸遮罩浓度",
+                            subtitle = "${(profile.wallpaperOverlayAlpha * 100).toInt()}%，调低可让背景更清晰",
+                            onClick = { showOverlaySheet = true }
+                        ),
+                        SettingsItem(
+                            icon = Icons.Default.Photo,
+                            title = "开屏画面",
+                            subtitle = if (profile.splashImageUri != null) "已设置，点击更换" else "未设置，点击选择图片",
+                            onClick = {
+                                pendingImagePick = PendingImagePick.Splash
+                                imagePickerLauncher.launch(arrayOf("image/*"))
+                            },
+                            trailingAction = if (profile.splashImageUri != null) {
+                                { viewModel.updateProfile(profile.copy(splashImageUri = null)) }
+                            } else null,
+                            trailingActionLabel = "清除"
+                        ),
+                        SettingsItem(
+                            icon = Icons.Default.Apps,
+                            title = "应用图标",
+                            subtitle = "桌面图标：${profile.launcherIconStyle.label}",
+                            onClick = { showIconSheet = true }
                         )
                     )
                 )
@@ -186,7 +256,7 @@ fun ProfileScreen(viewModel: WalletViewModel) {
                             title = "${page.title}页壁纸",
                             subtitle = if (uri != null) "已设置，点击更换" else "未设置，点击选择图片",
                             onClick = {
-                                pendingWallpaperPage = page
+                                pendingImagePick = PendingImagePick.Wallpaper(page)
                                 imagePickerLauncher.launch(arrayOf("image/*"))
                             },
                             trailingAction = if (uri != null) {
@@ -248,6 +318,46 @@ fun ProfileScreen(viewModel: WalletViewModel) {
             }
         )
     }
+
+    if (showFontScaleSheet) {
+        FontScaleSheet(
+            current = profile.fontScale,
+            onDismiss = { showFontScaleSheet = false },
+            onConfirm = { scale ->
+                viewModel.updateProfile(profile.copy(fontScale = scale))
+                showFontScaleSheet = false
+            }
+        )
+    }
+
+    if (showOverlaySheet) {
+        WallpaperOverlaySheet(
+            currentAlpha = profile.wallpaperOverlayAlpha,
+            onDismiss = { showOverlaySheet = false },
+            onConfirm = { alpha ->
+                viewModel.updateProfile(profile.copy(wallpaperOverlayAlpha = alpha))
+                showOverlaySheet = false
+            }
+        )
+    }
+
+    if (showIconSheet) {
+        LauncherIconSheet(
+            profile = profile,
+            onDismiss = { showIconSheet = false },
+            onSelectPreset = { style ->
+                viewModel.updateProfile(profile.copy(launcherIconStyle = style))
+            },
+            onPickCustomIcon = {
+                showIconSheet = false
+                pendingImagePick = PendingImagePick.AppIcon
+                imagePickerLauncher.launch(arrayOf("image/*"))
+            },
+            onClearCustomIcon = {
+                viewModel.updateProfile(profile.copy(customAppIconUri = null))
+            }
+        )
+    }
 }
 
 @Composable
@@ -270,16 +380,30 @@ private fun ProfileHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-                    .padding(12.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
+            if (profile.customAppIconUri != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(profile.customAppIconUri)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                        .padding(12.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = profile.nickname,
@@ -334,10 +458,11 @@ private fun SettingsSection(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         items.forEachIndexed { index, item ->
             SettingsRow(item = item)
