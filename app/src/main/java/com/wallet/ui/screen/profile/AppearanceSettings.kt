@@ -199,16 +199,16 @@ fun WallpaperOverlaySheet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PageTabBarOverlaySheet(
-    pageTitle: String,
+fun CardBackgroundOverlaySheet(
     currentAlpha: Float,
     onDismiss: () -> Unit,
     onConfirm: (Float) -> Unit
 ) {
     OverlayAlphaSheet(
-        title = "${pageTitle}页页签透明度",
-        description = "调节页面顶部标题栏背景透明度，0% 为完全透明",
+        title = "卡片背景透明度",
+        description = "调节各页面文字卡片背景透明度，0% 为完全透明",
         currentAlpha = currentAlpha,
+        valueRange = 0f..1f,
         onDismiss = onDismiss,
         onConfirm = onConfirm
     )
@@ -222,8 +222,8 @@ fun TabBarOverlaySheet(
     onConfirm: (Float) -> Unit
 ) {
     OverlayAlphaSheet(
-        title = "底部标签栏透明度",
-        description = "0% 为完全透明，调高可让标签更易辨认",
+        title = "标签栏透明度",
+        description = "同时调节顶部标题栏与底部导航栏背景，0% 为完全透明",
         currentAlpha = currentAlpha,
         onDismiss = onDismiss,
         onConfirm = onConfirm
@@ -236,6 +236,7 @@ private fun OverlayAlphaSheet(
     title: String,
     description: String,
     currentAlpha: Float,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..0.9f,
     onDismiss: () -> Unit,
     onConfirm: (Float) -> Unit
 ) {
@@ -268,7 +269,7 @@ private fun OverlayAlphaSheet(
             Slider(
                 value = alpha,
                 onValueChange = { alpha = it },
-                valueRange = 0f..0.9f
+                valueRange = valueRange
             )
             TextButton(onClick = { onConfirm(alpha) }, modifier = Modifier.fillMaxWidth()) {
                 Text("保存")
@@ -308,12 +309,7 @@ fun LauncherIconSheet(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "点击上方预设即可更换桌面图标；部分手机需等待几秒或重启桌面后生效",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "下方自定义图片仅用于开屏，不会更换桌面图标",
+                text = "点击预设可更换桌面图标；选择自定义图片也可设为桌面图标",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -322,7 +318,9 @@ fun LauncherIconSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                LauncherIconStyle.entries.forEach { style ->
+                LauncherIconStyle.entries
+                    .filter { it != LauncherIconStyle.CUSTOM }
+                    .forEach { style ->
                     val selected = profile.launcherIconStyle == style
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -358,12 +356,16 @@ fun LauncherIconSheet(
             }
 
             Text(
-                text = "自定义图标（仅开屏）",
+                text = "自定义桌面图标",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
 
-            RowWithCustomIcon(profile = profile, onPickCustomIcon = onPickCustomIcon)
+            RowWithCustomIcon(
+                profile = profile,
+                selected = profile.launcherIconStyle == LauncherIconStyle.CUSTOM,
+                onPickCustomIcon = onPickCustomIcon
+            )
 
             if (profile.customAppIconUri != null) {
                 TextButton(onClick = onClearCustomIcon) {
@@ -381,12 +383,22 @@ fun LauncherIconSheet(
 @Composable
 private fun RowWithCustomIcon(
     profile: UserProfile,
+    selected: Boolean,
     onPickCustomIcon: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
+            .border(
+                width = if (selected) 2.dp else 1.dp,
+                color = if (selected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant
+                },
+                shape = RoundedCornerShape(16.dp)
+            )
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onPickCustomIcon)
             .padding(16.dp)
@@ -415,7 +427,11 @@ private fun RowWithCustomIcon(
                 )
             }
             Text(
-                text = if (profile.customAppIconUri != null) "点击更换自定义图标" else "点击选择自定义图标",
+                text = if (profile.customAppIconUri != null) {
+                    "点击更换自定义桌面图标"
+                } else {
+                    "点击选择图片作为桌面图标"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp)
             )

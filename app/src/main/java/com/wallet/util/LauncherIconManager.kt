@@ -14,7 +14,8 @@ object LauncherIconManager {
         LauncherIconStyle.DEFAULT to ".LauncherDefault",
         LauncherIconStyle.FOREST to ".LauncherForest",
         LauncherIconStyle.OCEAN to ".LauncherOcean",
-        LauncherIconStyle.SUNSET to ".LauncherSunset"
+        LauncherIconStyle.SUNSET to ".LauncherSunset",
+        LauncherIconStyle.CUSTOM to ".LauncherCustom"
     )
 
     fun applyIcon(context: Context, style: LauncherIconStyle) {
@@ -43,6 +44,11 @@ object LauncherIconManager {
         }.onFailure {
             Log.e(TAG, "Failed to apply launcher icon: $style", it)
         }
+    }
+
+    fun applyCustomIcon(context: Context, imageUri: String) {
+        CustomLauncherIconHelper.apply(context, imageUri)
+        applyIcon(context, LauncherIconStyle.CUSTOM)
     }
 
     private fun componentName(packageName: String, alias: String): ComponentName {

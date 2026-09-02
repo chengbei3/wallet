@@ -51,11 +51,15 @@ import com.wallet.ui.components.SummaryCard
 import com.wallet.ui.components.TransparentBarDefaults
 import com.wallet.ui.components.formatCurrency
 import com.wallet.ui.theme.AppCardColors
+import com.wallet.util.ExchangeRates
 import com.wallet.ui.viewmodel.WalletViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AssetsScreen(viewModel: WalletViewModel) {
+fun AssetsScreen(
+    viewModel: WalletViewModel,
+    topBarAlpha: Float = 0f
+) {
     val accounts by viewModel.accounts.collectAsState()
     val profile by viewModel.userProfile.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
@@ -70,7 +74,7 @@ fun AssetsScreen(viewModel: WalletViewModel) {
         topBar = {
             TransparentBarDefaults.AppTopAppBar(
                 modifier = Modifier.statusBarsPadding(),
-                containerAlpha = profile.assetsPageTabAlpha,
+                containerAlpha = topBarAlpha,
                 title = { Text("资产管理") }
             )
         },
@@ -96,7 +100,7 @@ fun AssetsScreen(viewModel: WalletViewModel) {
                         append("人民币 ${formatCurrency(cnyTotal)}")
                         if (usdTotal > 0) {
                             append(" + 美元 ${formatCurrency(usdTotal, CurrencyType.USD)}")
-                            append(" × ${profile.usdToCnyRate}")
+                            append(" × ${ExchangeRates.format(profile.usdToCnyRate)}")
                         }
                         append(" · 共 ${accounts.size} 个账户")
                     },

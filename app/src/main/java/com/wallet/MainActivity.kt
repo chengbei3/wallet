@@ -22,7 +22,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: WalletViewModel = viewModel()
             val profile by viewModel.userProfile.collectAsState()
-            var showSplash by remember { mutableStateOf(true) }
+            var showSplash by remember {
+                mutableStateOf(viewModel.userProfile.value.splashImageUri != null)
+            }
 
             val isDarkTheme = if (profile.darkMode) true else isSystemInDarkTheme()
 
@@ -31,7 +33,7 @@ class MainActivity : ComponentActivity() {
                 fontScale = profile.fontScale,
                 themeColor = profile.themeColor
             ) {
-                if (showSplash) {
+                if (showSplash && profile.splashImageUri != null) {
                     SplashScreen(
                         splashImageUri = profile.splashImageUri,
                         onFinished = { showSplash = false }

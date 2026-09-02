@@ -71,13 +71,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.wallet.data.model.LauncherIconStyle
 import com.wallet.data.model.UserProfile
 import com.wallet.data.model.WallpaperPage
-import com.wallet.data.model.pageTabBarAlpha
-import com.wallet.data.model.withPageTabBarAlpha
 import com.wallet.data.repository.WalletRepository
 import com.wallet.ui.components.TransparentBarDefaults
 import com.wallet.ui.theme.AppCardColors
+import com.wallet.util.ExchangeRates
 import com.wallet.ui.viewmodel.WalletViewModel
 
 private sealed class PendingImagePick {
@@ -89,7 +89,10 @@ private sealed class PendingImagePick {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(viewModel: WalletViewModel) {
+fun ProfileScreen(
+    viewModel: WalletViewModel,
+    topBarAlpha: Float = 0f
+) {
     val profile by viewModel.userProfile.collectAsState()
     val context = LocalContext.current
     var showEditSheet by remember { mutableStateOf(false) }
@@ -97,8 +100,8 @@ fun ProfileScreen(viewModel: WalletViewModel) {
     var showFontScaleSheet by remember { mutableStateOf(false) }
     var showThemeColorSheet by remember { mutableStateOf(false) }
     var showOverlaySheet by remember { mutableStateOf(false) }
+    var showCardBgSheet by remember { mutableStateOf(false) }
     var showTabBarSheet by remember { mutableStateOf(false) }
-    var editingPageTabAlpha by remember { mutableStateOf<WallpaperPage?>(null) }
     var showIconSheet by remember { mutableStateOf(false) }
     var pendingImagePick by remember { mutableStateOf<PendingImagePick?>(null) }
     var pendingImportJson by remember { mutableStateOf<String?>(null) }
@@ -169,7 +172,8 @@ fun ProfileScreen(viewModel: WalletViewModel) {
                         viewModel.updateProfile(profile.copy(splashImageUri = uri.toString()))
                     }
                     PendingImagePick.AppIcon -> {
-                        viewModel.updateProfile(profile.copy(customAppIconUri = uri.toString()))
+                        viewModel.updateCustomLauncherIcon(uri.toString())
+                        importResultMessage = "自定义图标已应用。若系统弹出确认，请允许添加快捷方式；部分机型需返回桌面等待刷新。"
                     }
                     PendingImagePick.Avatar -> {
                         viewModel.updateProfile(profile.copy(avatarUri = uri.toString()))
@@ -186,7 +190,7 @@ fun ProfileScreen(viewModel: WalletViewModel) {
         topBar = {
             TransparentBarDefaults.AppTopAppBar(
                 modifier = Modifier.statusBarsPadding(),
-                containerAlpha = profile.profilePageTabAlpha,
+                containerAlpha = topBarAlpha,
                 title = { Text("我的") }
             )
         }
@@ -215,7 +219,7 @@ fun ProfileScreen(viewModel: WalletViewModel) {
                         SettingsItem(
                             icon = Icons.Default.CurrencyExchange,
                             title = "美元汇率",
-                            subtitle = "1 USD = ${profile.usdToCnyRate} CNY",
+                            subtitle = "1 USD = ${ExchangeRates.format(profile.usdToCnyRate)} CNY",
                             onClick = { showRateSheet = true }
                         ),
                         SettingsItem(
@@ -293,9 +297,15 @@ fun ProfileScreen(viewModel: WalletViewModel) {
                             onClick = { showOverlaySheet = true }
                         ),
                         SettingsItem(
+                            icon = Icons.Default.Image,
+                            title = "卡片背景透明度",
+                            subtitle = "${(profile.cardBackgroundAlpha * 100).toInt()}%，调低可让文字区域更通透",
+                            onClick = { showCardBgSheet = true }
+                        ),
+                        SettingsItem(
                             icon = Icons.Default.Tab,
-                            title = "底部标签栏透明度",
-                            subtitle = "${(profile.tabBarOverlayAlpha * 100).toInt()}%，0% 为完全透明",
+                            title = "标签栏透明度",
+                            subtitle = "${(profile.tabBarOverlayAlpha * 100).toInt()}%，同时作用于顶部与底部栏",
                             onClick = { showTabBarSheet = true }
                         ),
                         SettingsItem(
@@ -324,32 +334,24 @@ fun ProfileScreen(viewModel: WalletViewModel) {
 
                 SettingsSection(
                     title = "背景壁纸",
-                    items = WallpaperPage.entries.flatMap { page ->
+                    items = WallpaperPage.entries.map { page ->
                         val uri = when (page) {
                             WallpaperPage.ACCOUNTING -> profile.accountingWallpaperUri
                             WallpaperPage.ASSETS -> profile.assetsWallpaperUri
                             WallpaperPage.PROFILE -> profile.profileWallpaperUri
                         }
-                        listOf(
-                            SettingsItem(
-                                icon = Icons.Default.Image,
-                                title = "${page.title}页壁纸",
-                                subtitle = if (uri != null) "已设置，点击更换" else "未设置，点击选择图片",
-                                onClick = {
-                                    pendingImagePick = PendingImagePick.Wallpaper(page)
-                                    imagePickerLauncher.launch(arrayOf("image/*"))
-                                },
-                                trailingAction = if (uri != null) {
-                                    { viewModel.updateWallpaper(page, null) }
-                                } else null,
-                                trailingActionLabel = "清除"
-                            ),
-                            SettingsItem(
-                                icon = Icons.Default.Tab,
-                                title = "${page.title}页页签透明度",
-                                subtitle = "${(profile.pageTabBarAlpha(page) * 100).toInt()}%，0% 为完全透明",
-                                onClick = { editingPageTabAlpha = page }
-                            )
+                        SettingsItem(
+                            icon = Icons.Default.Image,
+                            title = "${page.title}页壁纸",
+                            subtitle = if (uri != null) "已设置，点击更换" else "未设置，点击选择图片",
+                            onClick = {
+                                pendingImagePick = PendingImagePick.Wallpaper(page)
+                                imagePickerLauncher.launch(arrayOf("image/*"))
+                            },
+                            trailingAction = if (uri != null) {
+                                { viewModel.updateWallpaper(page, null) }
+                            } else null,
+                            trailingActionLabel = "清除"
                         )
                     }
                 )
@@ -460,6 +462,17 @@ fun ProfileScreen(viewModel: WalletViewModel) {
         )
     }
 
+    if (showCardBgSheet) {
+        CardBackgroundOverlaySheet(
+            currentAlpha = profile.cardBackgroundAlpha,
+            onDismiss = { showCardBgSheet = false },
+            onConfirm = { alpha ->
+                viewModel.updateProfile(profile.copy(cardBackgroundAlpha = alpha))
+                showCardBgSheet = false
+            }
+        )
+    }
+
     if (showTabBarSheet) {
         TabBarOverlaySheet(
             currentAlpha = profile.tabBarOverlayAlpha,
@@ -467,18 +480,6 @@ fun ProfileScreen(viewModel: WalletViewModel) {
             onConfirm = { alpha ->
                 viewModel.updateProfile(profile.copy(tabBarOverlayAlpha = alpha))
                 showTabBarSheet = false
-            }
-        )
-    }
-
-    editingPageTabAlpha?.let { page ->
-        PageTabBarOverlaySheet(
-            pageTitle = page.title,
-            currentAlpha = profile.pageTabBarAlpha(page),
-            onDismiss = { editingPageTabAlpha = null },
-            onConfirm = { alpha ->
-                viewModel.updateProfile(profile.withPageTabBarAlpha(page, alpha))
-                editingPageTabAlpha = null
             }
         )
     }
@@ -497,7 +498,13 @@ fun ProfileScreen(viewModel: WalletViewModel) {
                 imagePickerLauncher.launch(arrayOf("image/*"))
             },
             onClearCustomIcon = {
-                viewModel.updateProfile(profile.copy(customAppIconUri = null))
+                viewModel.updateProfile(
+                    profile.copy(
+                        customAppIconUri = null,
+                        launcherIconStyle = LauncherIconStyle.DEFAULT
+                    )
+                )
+                viewModel.updateLauncherIconStyle(LauncherIconStyle.DEFAULT)
             }
         )
     }
@@ -803,7 +810,7 @@ private fun ExchangeRateSheet(
     onConfirm: (Double) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var rateText by remember { mutableStateOf(currentRate.toString()) }
+    var rateText by remember { mutableStateOf(ExchangeRates.format(currentRate)) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -840,7 +847,7 @@ private fun ExchangeRateSheet(
                 onClick = {
                     val rate = rateText.toDoubleOrNull()
                     if (rate != null && rate > 0) {
-                        onConfirm(rate)
+                        onConfirm(ExchangeRates.normalize(rate))
                     }
                 },
                 modifier = Modifier.fillMaxWidth()

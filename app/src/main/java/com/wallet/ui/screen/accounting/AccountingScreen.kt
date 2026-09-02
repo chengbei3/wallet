@@ -62,10 +62,14 @@ import com.wallet.ui.components.TransparentBarDefaults
 import com.wallet.ui.components.formatCurrency
 import com.wallet.ui.components.formatDate
 import com.wallet.ui.viewmodel.WalletViewModel
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AccountingScreen(viewModel: WalletViewModel) {
+fun AccountingScreen(
+    viewModel: WalletViewModel,
+    topBarAlpha: Float = 0f
+) {
     val transactions by viewModel.transactions.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val profile by viewModel.userProfile.collectAsState()
@@ -76,6 +80,7 @@ fun AccountingScreen(viewModel: WalletViewModel) {
 
     LaunchedEffect(profile.openAddTransactionOnStart) {
         if (profile.openAddTransactionOnStart && !hasAutoOpenedAdd) {
+            delay(200)
             showAddSheet = true
             hasAutoOpenedAdd = true
         }
@@ -114,7 +119,7 @@ fun AccountingScreen(viewModel: WalletViewModel) {
                 viewModel = viewModel,
                 transactions = transactions,
                 accounts = accounts,
-                topBarAlpha = profile.accountingPageTabAlpha,
+                topBarAlpha = topBarAlpha,
                 onShowStats = { showStatsSheet = true },
                 onShowAdd = { showAddSheet = true }
             )

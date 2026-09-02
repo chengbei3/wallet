@@ -9,19 +9,25 @@ object AppCardColors {
 
     @Composable
     fun surface() = CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+        containerColor = MaterialTheme.colorScheme.surface.copy(
+            alpha = LocalCardBackgroundAlpha.current
+        ),
         contentColor = MaterialTheme.colorScheme.onSurface
     )
 
     @Composable
     fun surfaceVariant() = CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
+        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
+            alpha = LocalCardBackgroundAlpha.current
+        ),
         contentColor = MaterialTheme.colorScheme.onSurface
     )
 
     @Composable
     fun primaryContainer() = CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f),
+        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(
+            alpha = LocalCardBackgroundAlpha.current
+        ),
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
     )
 }

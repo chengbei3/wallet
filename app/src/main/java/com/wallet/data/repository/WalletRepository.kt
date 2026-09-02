@@ -16,6 +16,7 @@ import com.wallet.data.model.WallpaperPage
 import com.wallet.data.model.WalletBackup
 import com.wallet.notification.NotificationScheduler
 import com.wallet.util.LauncherIconManager
+import com.wallet.util.ExchangeRates
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,11 +43,6 @@ class WalletRepository(context: Context) {
 
     private val _userProfile = MutableStateFlow(preferences.loadProfile())
     val userProfile: StateFlow<UserProfile> = _userProfile.asStateFlow()
-
-    init {
-        persistSnapshot()
-        LauncherIconManager.applyIcon(appContext, _userProfile.value.launcherIconStyle)
-    }
 
     val totalAssets: Double
         get() = calculateTotalAssets(_accounts.value, _userProfile.value.usdToCnyRate)
@@ -197,7 +193,11 @@ class WalletRepository(context: Context) {
         preferences.saveProfile(profile)
         updateNotificationSchedule(profile.notificationsEnabled, previous.notificationsEnabled)
         if (profile.launcherIconStyle != previous.launcherIconStyle) {
-            LauncherIconManager.applyIcon(appContext, profile.launcherIconStyle)
+            if (profile.launcherIconStyle == LauncherIconStyle.CUSTOM && profile.customAppIconUri != null) {
+                LauncherIconManager.applyCustomIcon(appContext, profile.customAppIconUri)
+            } else {
+                LauncherIconManager.applyIcon(appContext, profile.launcherIconStyle)
+            }
         }
         persistSnapshot()
     }
@@ -206,8 +206,24 @@ class WalletRepository(context: Context) {
         val updated = _userProfile.value.copy(launcherIconStyle = style)
         _userProfile.value = updated
         preferences.saveProfile(updated)
-        LauncherIconManager.applyIcon(appContext, style)
+        if (style == LauncherIconStyle.CUSTOM && updated.customAppIconUri != null) {
+            LauncherIconManager.applyCustomIcon(appContext, updated.customAppIconUri)
+        } else {
+            LauncherIconManager.applyIcon(appContext, style)
+        }
         persistSnapshot()
+    }
+
+    fun updateCustomLauncherIcon(uri: String): Boolean {
+        val updated = _userProfile.value.copy(
+            customAppIconUri = uri,
+            launcherIconStyle = LauncherIconStyle.CUSTOM
+        )
+        _userProfile.value = updated
+        preferences.saveProfile(updated)
+        LauncherIconManager.applyCustomIcon(appContext, uri)
+        persistSnapshot()
+        return true
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {
@@ -225,8 +241,9 @@ class WalletRepository(context: Context) {
     }
 
     fun updateExchangeRate(rate: Double) {
+        val normalizedRate = ExchangeRates.normalize(rate)
         _userProfile.update {
-            it.copy(usdToCnyRate = rate).also { profile -> preferences.saveProfile(profile) }
+            it.copy(usdToCnyRate = normalizedRate).also { profile -> preferences.saveProfile(profile) }
         }
         persistSnapshot()
     }

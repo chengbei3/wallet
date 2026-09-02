@@ -8,6 +8,7 @@ import com.wallet.data.model.FontScale
 import com.wallet.data.model.LauncherIconStyle
 import com.wallet.data.model.Transaction
 import com.wallet.data.model.UserProfile
+import com.wallet.util.ExchangeRates
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -79,12 +80,10 @@ class WalletPreferences(context: Context) {
                 AppThemeColor.valueOf(prefs.getString(KEY_THEME_COLOR, AppThemeColor.GREEN.name)!!)
             }.getOrDefault(AppThemeColor.GREEN),
             notificationsEnabled = prefs.getBoolean(KEY_NOTIFICATIONS_ENABLED, true),
-            usdToCnyRate = prefs.getFloat(KEY_USD_TO_CNY_RATE, 7.25f).toDouble(),
+            usdToCnyRate = loadExchangeRate(),
             wallpaperOverlayAlpha = prefs.getFloat(KEY_WALLPAPER_OVERLAY_ALPHA, 0.55f),
+            cardBackgroundAlpha = prefs.getFloat(KEY_CARD_BACKGROUND_ALPHA, 0.92f),
             tabBarOverlayAlpha = prefs.getFloat(KEY_TAB_BAR_OVERLAY_ALPHA, 0f),
-            accountingPageTabAlpha = prefs.getFloat(KEY_ACCOUNTING_PAGE_TAB_ALPHA, 0f),
-            assetsPageTabAlpha = prefs.getFloat(KEY_ASSETS_PAGE_TAB_ALPHA, 0f),
-            profilePageTabAlpha = prefs.getFloat(KEY_PROFILE_PAGE_TAB_ALPHA, 0f),
             fontScale = runCatching { FontScale.valueOf(fontScaleName!!) }.getOrDefault(FontScale.NORMAL),
             splashImageUri = prefs.getString(KEY_SPLASH_IMAGE, null),
             customAppIconUri = prefs.getString(KEY_CUSTOM_APP_ICON, null),
@@ -107,12 +106,10 @@ class WalletPreferences(context: Context) {
             .putBoolean(KEY_DARK_MODE, profile.darkMode)
             .putString(KEY_THEME_COLOR, profile.themeColor.name)
             .putBoolean(KEY_NOTIFICATIONS_ENABLED, profile.notificationsEnabled)
-            .putFloat(KEY_USD_TO_CNY_RATE, profile.usdToCnyRate.toFloat())
+            .putString(KEY_USD_TO_CNY_RATE, ExchangeRates.format(profile.usdToCnyRate))
             .putFloat(KEY_WALLPAPER_OVERLAY_ALPHA, profile.wallpaperOverlayAlpha)
+            .putFloat(KEY_CARD_BACKGROUND_ALPHA, profile.cardBackgroundAlpha)
             .putFloat(KEY_TAB_BAR_OVERLAY_ALPHA, profile.tabBarOverlayAlpha)
-            .putFloat(KEY_ACCOUNTING_PAGE_TAB_ALPHA, profile.accountingPageTabAlpha)
-            .putFloat(KEY_ASSETS_PAGE_TAB_ALPHA, profile.assetsPageTabAlpha)
-            .putFloat(KEY_PROFILE_PAGE_TAB_ALPHA, profile.profilePageTabAlpha)
             .putString(KEY_FONT_SCALE, profile.fontScale.name)
             .putString(KEY_SPLASH_IMAGE, profile.splashImageUri)
             .putString(KEY_CUSTOM_APP_ICON, profile.customAppIconUri)
@@ -136,6 +133,14 @@ class WalletPreferences(context: Context) {
     val notificationsEnabled: Boolean
         get() = prefs.getBoolean(KEY_NOTIFICATIONS_ENABLED, true)
 
+    private fun loadExchangeRate(): Double {
+        val stored = prefs.getString(KEY_USD_TO_CNY_RATE, null)
+        if (!stored.isNullOrBlank()) {
+            return ExchangeRates.normalize(stored.toDoubleOrNull() ?: 7.25)
+        }
+        return ExchangeRates.normalize(prefs.getFloat(KEY_USD_TO_CNY_RATE, 7.25f).toDouble())
+    }
+
     companion object {
         private const val PREFS_NAME = "wallet_prefs"
         private const val KEY_ACCOUNTS = "accounts"
@@ -148,10 +153,8 @@ class WalletPreferences(context: Context) {
         private const val KEY_NOTIFICATIONS_ENABLED = "notifications_enabled"
         private const val KEY_USD_TO_CNY_RATE = "usd_to_cny_rate"
         private const val KEY_WALLPAPER_OVERLAY_ALPHA = "wallpaper_overlay_alpha"
+        private const val KEY_CARD_BACKGROUND_ALPHA = "card_background_alpha"
         private const val KEY_TAB_BAR_OVERLAY_ALPHA = "tab_bar_overlay_alpha"
-        private const val KEY_ACCOUNTING_PAGE_TAB_ALPHA = "accounting_page_tab_alpha"
-        private const val KEY_ASSETS_PAGE_TAB_ALPHA = "assets_page_tab_alpha"
-        private const val KEY_PROFILE_PAGE_TAB_ALPHA = "profile_page_tab_alpha"
         private const val KEY_FONT_SCALE = "font_scale"
         private const val KEY_SPLASH_IMAGE = "splash_image"
         private const val KEY_CUSTOM_APP_ICON = "custom_app_icon"
