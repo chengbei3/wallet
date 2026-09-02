@@ -91,8 +91,8 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
         repository.updateLauncherIconStyle(style)
     }
 
-    fun updateCustomLauncherIcon(uri: String) {
-        repository.updateCustomLauncherIcon(uri)
+    fun updateCustomLauncherIcon(uri: String): Boolean {
+        return repository.updateCustomLauncherIcon(uri)
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {

@@ -12,8 +12,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -38,6 +36,7 @@ import com.wallet.data.model.PeriodStatistics
 import com.wallet.data.model.StatisticsPeriod
 import com.wallet.data.model.TransactionType
 import com.wallet.ui.components.formatCurrency
+import com.wallet.ui.theme.AppCard
 import com.wallet.ui.theme.AppCardColors
 import com.wallet.ui.viewmodel.WalletViewModel
 
@@ -151,7 +150,7 @@ fun StatisticsSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Card(
+            AppCard(
                 modifier = Modifier.fillMaxWidth(),
                 colors = AppCardColors.primaryContainer()
             ) {
@@ -235,7 +234,7 @@ private fun StatisticCard(
     color: androidx.compose.ui.graphics.Color,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    AppCard(
         modifier = modifier,
         colors = AppCardColors.surfaceVariant()
     ) {

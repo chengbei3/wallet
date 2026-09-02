@@ -24,8 +24,6 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -57,6 +55,7 @@ import com.wallet.data.model.TransactionType
 import com.wallet.data.model.expenseCategories
 import com.wallet.data.model.incomeCategories
 import com.wallet.ui.components.StatRow
+import com.wallet.ui.theme.AppCard
 import com.wallet.ui.theme.AppCardColors
 import com.wallet.ui.components.TransparentBarDefaults
 import com.wallet.ui.components.formatCurrency
@@ -252,10 +251,9 @@ private fun TransactionItem(
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    Card(
+    AppCard(
         modifier = Modifier.fillMaxWidth(),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors = AppCardColors.surface(),
     ) {
         Row(

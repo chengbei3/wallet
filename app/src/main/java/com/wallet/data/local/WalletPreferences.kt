@@ -134,11 +134,12 @@ class WalletPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_NOTIFICATIONS_ENABLED, true)
 
     private fun loadExchangeRate(): Double {
-        val stored = prefs.getString(KEY_USD_TO_CNY_RATE, null)
-        if (!stored.isNullOrBlank()) {
-            return ExchangeRates.normalize(stored.toDoubleOrNull() ?: 7.25)
+        return when (val value = prefs.all[KEY_USD_TO_CNY_RATE]) {
+            is String -> ExchangeRates.normalize(value.toDoubleOrNull() ?: 7.25)
+            is Float -> ExchangeRates.normalize(value.toDouble())
+            is Double -> ExchangeRates.normalize(value)
+            else -> ExchangeRates.normalize(7.25)
         }
-        return ExchangeRates.normalize(prefs.getFloat(KEY_USD_TO_CNY_RATE, 7.25f).toDouble())
     }
 
     companion object {

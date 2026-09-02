@@ -46,9 +46,12 @@ object LauncherIconManager {
         }
     }
 
-    fun applyCustomIcon(context: Context, imageUri: String) {
-        CustomLauncherIconHelper.apply(context, imageUri)
-        applyIcon(context, LauncherIconStyle.CUSTOM)
+    fun applyCustomIcon(context: Context, imageUri: String): CustomLauncherIconHelper.ApplyResult {
+        val result = CustomLauncherIconHelper.apply(context, imageUri)
+        if (result.success) {
+            applyIcon(context, LauncherIconStyle.CUSTOM)
+        }
+        return result
     }
 
     private fun componentName(packageName: String, alias: String): ComponentName {

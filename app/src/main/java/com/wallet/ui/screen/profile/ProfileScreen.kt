@@ -42,8 +42,6 @@ import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Tab
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -76,6 +74,7 @@ import com.wallet.data.model.UserProfile
 import com.wallet.data.model.WallpaperPage
 import com.wallet.data.repository.WalletRepository
 import com.wallet.ui.components.TransparentBarDefaults
+import com.wallet.ui.theme.AppCard
 import com.wallet.ui.theme.AppCardColors
 import com.wallet.util.ExchangeRates
 import com.wallet.ui.viewmodel.WalletViewModel
@@ -172,8 +171,12 @@ fun ProfileScreen(
                         viewModel.updateProfile(profile.copy(splashImageUri = uri.toString()))
                     }
                     PendingImagePick.AppIcon -> {
-                        viewModel.updateCustomLauncherIcon(uri.toString())
-                        importResultMessage = "自定义图标已应用。若系统弹出确认，请允许添加快捷方式；部分机型需返回桌面等待刷新。"
+                        val applied = viewModel.updateCustomLauncherIcon(uri.toString())
+                        importResultMessage = if (applied) {
+                            "自定义图标已处理并压缩保存。若系统弹出「添加到主屏幕」，请确认后使用桌面快捷方式；应用列表中会显示相框占位图标（系统限制）。"
+                        } else {
+                            "自定义图标处理失败，请换一张较小的图片后重试。"
+                        }
                     }
                     PendingImagePick.Avatar -> {
                         viewModel.updateProfile(profile.copy(avatarUri = uri.toString()))
@@ -576,7 +579,7 @@ private fun ProfileHeader(
     onEdit: () -> Unit,
     onAvatarClick: () -> Unit
 ) {
-    Card(
+    AppCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 12.dp),
@@ -667,11 +670,10 @@ private fun SettingsSection(
         modifier = Modifier.padding(bottom = 8.dp)
     )
 
-    Card(
+    AppCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = AppCardColors.surface(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         items.forEachIndexed { index, item ->
             SettingsRow(item = item)

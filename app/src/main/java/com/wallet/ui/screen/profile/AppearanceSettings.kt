@@ -309,7 +309,7 @@ fun LauncherIconSheet(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "点击预设可更换桌面图标；选择自定义图片也可设为桌面图标",
+                text = "预设图标会直接替换应用列表中的图标。自定义图片会自动压缩，并尝试创建桌面快捷方式；应用列表中显示相框占位（Android 系统限制）。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

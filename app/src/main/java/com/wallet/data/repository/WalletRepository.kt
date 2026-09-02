@@ -215,13 +215,16 @@ class WalletRepository(context: Context) {
     }
 
     fun updateCustomLauncherIcon(uri: String): Boolean {
+        val result = LauncherIconManager.applyCustomIcon(appContext, uri)
+        if (!result.success) {
+            return false
+        }
         val updated = _userProfile.value.copy(
-            customAppIconUri = uri,
+            customAppIconUri = result.localIconUri ?: uri,
             launcherIconStyle = LauncherIconStyle.CUSTOM
         )
         _userProfile.value = updated
         preferences.saveProfile(updated)
-        LauncherIconManager.applyCustomIcon(appContext, uri)
         persistSnapshot()
         return true
     }

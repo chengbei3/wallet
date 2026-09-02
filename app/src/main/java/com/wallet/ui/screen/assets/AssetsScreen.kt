@@ -19,8 +19,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -50,6 +48,7 @@ import com.wallet.data.model.CurrencyType
 import com.wallet.ui.components.SummaryCard
 import com.wallet.ui.components.TransparentBarDefaults
 import com.wallet.ui.components.formatCurrency
+import com.wallet.ui.theme.AppCard
 import com.wallet.ui.theme.AppCardColors
 import com.wallet.util.ExchangeRates
 import com.wallet.ui.viewmodel.WalletViewModel
@@ -150,10 +149,9 @@ private fun AccountItem(
     var showDeleteDialog by remember { mutableStateOf(false) }
     val icon = getAccountIcon(account.name)
 
-    Card(
+    AppCard(
         modifier = Modifier.fillMaxWidth(),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors = AppCardColors.surface(),
     ) {
         Row(
