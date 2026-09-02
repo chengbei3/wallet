@@ -7,8 +7,8 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="splash_background">#C8E6C9</color>
-    <color name="launcher_default_bg">#2E7D32</color>
+    <color name="splash_background">#F5F7F5</color>
+    <color name="launcher_default_bg">#E8F4FC</color>
     <color name="launcher_forest_bg">#1B5E20</color>
     <color name="launcher_ocean_bg">#1565C0</color>
     <color name="launcher_sunset_bg">#E65100</color>

@@ -285,7 +285,8 @@ fun LauncherIconSheet(
     onDismiss: () -> Unit,
     onSelectPreset: (LauncherIconStyle) -> Unit,
     onPickCustomIcon: () -> Unit,
-    onClearCustomIcon: () -> Unit
+    onClearCustomIcon: () -> Unit,
+    onPreviewImage: (model: Any, onReplace: (() -> Unit)?) -> Unit = { _, _ -> }
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val iconDrawables = mapOf(
@@ -343,7 +344,12 @@ fun LauncherIconSheet(
                             contentDescription = style.label,
                             modifier = Modifier
                                 .size(56.dp)
-                                .clip(RoundedCornerShape(14.dp)),
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable {
+                                    iconDrawables[style]?.let { drawable ->
+                                        onPreviewImage(drawable, null)
+                                    }
+                                },
                             contentScale = ContentScale.Crop
                         )
                         Text(
@@ -364,7 +370,8 @@ fun LauncherIconSheet(
             RowWithCustomIcon(
                 profile = profile,
                 selected = profile.launcherIconStyle == LauncherIconStyle.CUSTOM,
-                onPickCustomIcon = onPickCustomIcon
+                onPickCustomIcon = onPickCustomIcon,
+                onPreviewImage = onPreviewImage
             )
 
             if (profile.customAppIconUri != null) {
@@ -384,7 +391,8 @@ fun LauncherIconSheet(
 private fun RowWithCustomIcon(
     profile: UserProfile,
     selected: Boolean,
-    onPickCustomIcon: () -> Unit
+    onPickCustomIcon: () -> Unit,
+    onPreviewImage: (model: Any, onReplace: (() -> Unit)?) -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -404,31 +412,24 @@ private fun RowWithCustomIcon(
             .padding(16.dp)
     ) {
         Column {
-            if (profile.customAppIconUri != null) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(profile.customAppIconUri)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(16.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                AsyncImage(
-                    model = R.mipmap.ic_launcher,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(16.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            }
+            val previewModel = profile.customAppIconUri ?: R.mipmap.ic_launcher
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(previewModel)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "自定义图标预览",
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable {
+                        onPreviewImage(previewModel, onPickCustomIcon)
+                    },
+                contentScale = ContentScale.Crop
+            )
             Text(
                 text = if (profile.customAppIconUri != null) {
-                    "点击更换自定义桌面图标"
+                    "点击图片可预览，点击此处更换"
                 } else {
                     "点击选择图片作为桌面图标"
                 },

@@ -38,7 +38,6 @@ import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Tab
 import androidx.compose.material3.AlertDialog
@@ -73,6 +72,7 @@ import com.wallet.data.model.LauncherIconStyle
 import com.wallet.data.model.UserProfile
 import com.wallet.data.model.WallpaperPage
 import com.wallet.data.repository.WalletRepository
+import com.wallet.ui.components.ImagePreviewDialog
 import com.wallet.ui.components.TransparentBarDefaults
 import com.wallet.ui.theme.AppCard
 import com.wallet.ui.theme.AppCardColors
@@ -81,7 +81,6 @@ import com.wallet.ui.viewmodel.WalletViewModel
 
 private sealed class PendingImagePick {
     data class Wallpaper(val page: WallpaperPage) : PendingImagePick()
-    data object Splash : PendingImagePick()
     data object AppIcon : PendingImagePick()
     data object Avatar : PendingImagePick()
 }
@@ -106,6 +105,13 @@ fun ProfileScreen(
     var pendingImportJson by remember { mutableStateOf<String?>(null) }
     var showImportDialog by remember { mutableStateOf(false) }
     var importResultMessage by remember { mutableStateOf<String?>(null) }
+    var previewImage by remember { mutableStateOf<Any?>(null) }
+    var previewReplaceAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    fun openPreview(model: Any, onReplace: (() -> Unit)? = null) {
+        previewImage = model
+        previewReplaceAction = onReplace
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -167,9 +173,6 @@ fun ProfileScreen(
                     is PendingImagePick.Wallpaper -> {
                         viewModel.updateWallpaper(target.page, uri.toString())
                     }
-                    PendingImagePick.Splash -> {
-                        viewModel.updateProfile(profile.copy(splashImageUri = uri.toString()))
-                    }
                     PendingImagePick.AppIcon -> {
                         val applied = viewModel.updateCustomLauncherIcon(uri.toString())
                         importResultMessage = if (applied) {
@@ -185,6 +188,11 @@ fun ProfileScreen(
             }
         }
         pendingImagePick = null
+    }
+
+    fun pickImage(target: PendingImagePick) {
+        pendingImagePick = target
+        imagePickerLauncher.launch(arrayOf("image/*"))
     }
 
     Scaffold(
@@ -209,8 +217,14 @@ fun ProfileScreen(
                     profile = profile,
                     onEdit = { showEditSheet = true },
                     onAvatarClick = {
-                        pendingImagePick = PendingImagePick.Avatar
-                        imagePickerLauncher.launch(arrayOf("image/*"))
+                        val avatarUri = profile.avatarUri
+                        if (avatarUri != null) {
+                            openPreview(avatarUri) {
+                                pickImage(PendingImagePick.Avatar)
+                            }
+                        } else {
+                            pickImage(PendingImagePick.Avatar)
+                        }
                     }
                 )
 
@@ -312,19 +326,6 @@ fun ProfileScreen(
                             onClick = { showTabBarSheet = true }
                         ),
                         SettingsItem(
-                            icon = Icons.Default.Photo,
-                            title = "开屏画面",
-                            subtitle = if (profile.splashImageUri != null) "已设置，点击更换" else "未设置，点击选择图片",
-                            onClick = {
-                                pendingImagePick = PendingImagePick.Splash
-                                imagePickerLauncher.launch(arrayOf("image/*"))
-                            },
-                            trailingAction = if (profile.splashImageUri != null) {
-                                { viewModel.updateProfile(profile.copy(splashImageUri = null)) }
-                            } else null,
-                            trailingActionLabel = "清除"
-                        ),
-                        SettingsItem(
                             icon = Icons.Default.Apps,
                             title = "应用图标",
                             subtitle = "桌面图标：${profile.launcherIconStyle.label}",
@@ -346,10 +347,15 @@ fun ProfileScreen(
                         SettingsItem(
                             icon = Icons.Default.Image,
                             title = "${page.title}页壁纸",
-                            subtitle = if (uri != null) "已设置，点击更换" else "未设置，点击选择图片",
-                            onClick = {
-                                pendingImagePick = PendingImagePick.Wallpaper(page)
-                                imagePickerLauncher.launch(arrayOf("image/*"))
+                            subtitle = if (uri != null) "已设置，点击缩略图预览" else "未设置，点击选择图片",
+                            onClick = { pickImage(PendingImagePick.Wallpaper(page)) },
+                            thumbnail = uri,
+                            onThumbnailClick = uri?.let { imageUri ->
+                                {
+                                    openPreview(imageUri) {
+                                        pickImage(PendingImagePick.Wallpaper(page))
+                                    }
+                                }
                             },
                             trailingAction = if (uri != null) {
                                 { viewModel.updateWallpaper(page, null) }
@@ -495,10 +501,12 @@ fun ProfileScreen(
                 viewModel.updateLauncherIconStyle(style)
                 importResultMessage = "桌面图标已切换为「${style.label}」。若桌面未立即更新，请返回桌面等待几秒，或重启手机。"
             },
+            onPreviewImage = { model, onReplace ->
+                openPreview(model, onReplace)
+            },
             onPickCustomIcon = {
                 showIconSheet = false
-                pendingImagePick = PendingImagePick.AppIcon
-                imagePickerLauncher.launch(arrayOf("image/*"))
+                pickImage(PendingImagePick.AppIcon)
             },
             onClearCustomIcon = {
                 viewModel.updateProfile(
@@ -571,6 +579,17 @@ fun ProfileScreen(
             }
         )
     }
+
+    previewImage?.let { model ->
+        ImagePreviewDialog(
+            model = model,
+            onDismiss = {
+                previewImage = null
+                previewReplaceAction = null
+            },
+            onReplace = previewReplaceAction
+        )
+    }
 }
 
 @Composable
@@ -633,7 +652,7 @@ private fun ProfileHeader(
                     )
                 }
                 Text(
-                    text = "点击头像可更换",
+                    text = if (profile.avatarUri != null) "点击头像可预览" else "点击头像可更换",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
                 )
@@ -654,7 +673,9 @@ private data class SettingsItem(
     val onSwitchChange: (Boolean) -> Unit = {},
     val onClick: (() -> Unit)? = null,
     val trailingAction: (() -> Unit)? = null,
-    val trailingActionLabel: String? = null
+    val trailingActionLabel: String? = null,
+    val thumbnail: Any? = null,
+    val onThumbnailClick: (() -> Unit)? = null
 )
 
 @Composable
@@ -722,6 +743,23 @@ private fun SettingsRow(item: SettingsItem) {
                 text = item.subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (item.thumbnail != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(item.thumbnail)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "预览${item.title}",
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable(enabled = item.onThumbnailClick != null) {
+                        item.onThumbnailClick?.invoke()
+                    },
+                contentScale = ContentScale.Crop
             )
         }
         if (item.showSwitch) {
