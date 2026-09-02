@@ -51,7 +51,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -72,7 +71,8 @@ import coil.request.ImageRequest
 import com.wallet.data.model.UserProfile
 import com.wallet.data.model.WallpaperPage
 import com.wallet.data.repository.WalletRepository
-import com.wallet.ui.components.WallpaperBackground
+import com.wallet.ui.components.TransparentBarDefaults
+import com.wallet.ui.theme.AppCardColors
 import com.wallet.ui.viewmodel.WalletViewModel
 
 private sealed class PendingImagePick {
@@ -168,28 +168,23 @@ fun ProfileScreen(viewModel: WalletViewModel) {
         pendingImagePick = null
     }
 
-    WallpaperBackground(
-        wallpaperUri = profile.profileWallpaperUri,
-        overlayAlpha = profile.wallpaperOverlayAlpha
-    ) {
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                TopAppBar(
-                    title = { Text("我的") },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
-                    )
-                )
-            }
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp)
-            ) {
+    Scaffold(
+        containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+        topBar = {
+            TopAppBar(
+                title = { Text("我的") },
+                colors = TransparentBarDefaults.topAppBarColors()
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+        ) {
                 ProfileHeader(
                     profile = profile,
                     onEdit = { showEditSheet = true }
@@ -360,7 +355,6 @@ fun ProfileScreen(viewModel: WalletViewModel) {
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
-    }
 
     if (showEditSheet) {
         EditProfileSheet(
@@ -494,9 +488,7 @@ private fun ProfileHeader(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f)
-        )
+        colors = AppCardColors.primaryContainer()
     ) {
         Row(
             modifier = Modifier
@@ -584,9 +576,7 @@ private fun SettingsSection(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
-        ),
+        colors = AppCardColors.surface(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         items.forEachIndexed { index, item ->
@@ -629,7 +619,8 @@ private fun SettingsRow(item: SettingsItem) {
         ) {
             Text(
                 text = item.title,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = item.subtitle,

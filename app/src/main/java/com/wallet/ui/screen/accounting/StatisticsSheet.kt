@@ -38,6 +38,7 @@ import com.wallet.data.model.PeriodStatistics
 import com.wallet.data.model.StatisticsPeriod
 import com.wallet.data.model.TransactionType
 import com.wallet.ui.components.formatCurrency
+import com.wallet.ui.theme.AppCardColors
 import com.wallet.ui.viewmodel.WalletViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,7 +67,8 @@ fun StatisticsSheet(
             Text(
                 text = "收支统计",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -108,7 +110,8 @@ fun StatisticsSheet(
                 Text(
                     text = stats.periodLabel,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 IconButton(onClick = {
                     if (period == StatisticsPeriod.MONTH) {
@@ -150,9 +153,7 @@ fun StatisticsSheet(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                colors = AppCardColors.primaryContainer()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -184,7 +185,8 @@ fun StatisticsSheet(
                 Text(
                     text = "分类明细",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 LazyColumn(
@@ -200,7 +202,8 @@ fun StatisticsSheet(
                         ) {
                             Text(
                                 text = item.category,
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = if (item.type == TransactionType.INCOME) {
@@ -234,9 +237,7 @@ private fun StatisticCard(
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        colors = AppCardColors.surfaceVariant()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(

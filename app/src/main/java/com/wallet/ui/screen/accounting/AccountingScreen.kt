@@ -33,7 +33,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -52,7 +51,8 @@ import com.wallet.data.model.TransactionType
 import com.wallet.data.model.expenseCategories
 import com.wallet.data.model.incomeCategories
 import com.wallet.ui.components.StatRow
-import com.wallet.ui.components.WallpaperBackground
+import com.wallet.ui.theme.AppCardColors
+import com.wallet.ui.components.TransparentBarDefaults
 import com.wallet.ui.components.formatCurrency
 import com.wallet.ui.components.formatDate
 import com.wallet.ui.viewmodel.WalletViewModel
@@ -62,74 +62,68 @@ import com.wallet.ui.viewmodel.WalletViewModel
 fun AccountingScreen(viewModel: WalletViewModel) {
     val transactions by viewModel.transactions.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
-    val profile by viewModel.userProfile.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
     var showStatsSheet by remember { mutableStateOf(false) }
 
-    WallpaperBackground(
-        wallpaperUri = profile.accountingWallpaperUri,
-        overlayAlpha = profile.wallpaperOverlayAlpha
-    ) {
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                TopAppBar(
-                    title = { Text("记账") },
-                    actions = {
-                        IconButton(onClick = { showStatsSheet = true }) {
-                            Icon(
-                                Icons.Default.BarChart,
-                                contentDescription = "统计"
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
-                    )
-                )
-            },
-            floatingActionButton = {
-                FloatingActionButton(
-                    onClick = { showAddSheet = true },
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "添加记账")
-                }
-            }
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 16.dp)
+    Scaffold(
+        containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+        topBar = {
+            TopAppBar(
+                title = { Text("记账") },
+                actions = {
+                    IconButton(onClick = { showStatsSheet = true }) {
+                        Icon(
+                            Icons.Default.BarChart,
+                            contentDescription = "统计"
+                        )
+                    }
+                },
+                colors = TransparentBarDefaults.topAppBarColors()
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddSheet = true },
+                containerColor = MaterialTheme.colorScheme.primary
             ) {
-                StatRow(
-                    income = viewModel.monthlyIncome,
-                    expense = viewModel.monthlyExpense,
-                    modifier = Modifier.padding(vertical = 12.dp)
-                )
+                Icon(Icons.Default.Add, contentDescription = "添加记账")
+            }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp)
+        ) {
+            StatRow(
+                income = viewModel.monthlyIncome,
+                expense = viewModel.monthlyExpense,
+                modifier = Modifier.padding(vertical = 12.dp)
+            )
 
-                Text(
-                    text = "账单记录",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
+            Text(
+                text = "账单记录",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
 
-                if (transactions.isEmpty()) {
-                    EmptyTransactions()
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 80.dp)
-                    ) {
-                        items(transactions, key = { it.id }) { transaction ->
-                            TransactionItem(
-                                transaction = transaction,
-                                accountName = accounts.find { it.id == transaction.accountId }?.name ?: "",
-                                onDelete = { viewModel.deleteTransaction(transaction) }
-                            )
-                        }
+            if (transactions.isEmpty()) {
+                EmptyTransactions()
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    items(transactions, key = { it.id }) { transaction ->
+                        TransactionItem(
+                            transaction = transaction,
+                            accountName = accounts.find { it.id == transaction.accountId }?.name ?: "",
+                            onDelete = { viewModel.deleteTransaction(transaction) }
+                        )
                     }
                 }
             }
@@ -189,9 +183,7 @@ private fun TransactionItem(
         modifier = Modifier.fillMaxWidth(),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
-        ),
+        colors = AppCardColors.surface(),
     ) {
         Row(
             modifier = Modifier
@@ -204,7 +196,8 @@ private fun TransactionItem(
                 Text(
                     text = transaction.category,
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 if (transaction.note.isNotBlank()) {
                     Text(

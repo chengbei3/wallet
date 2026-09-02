@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.wallet.data.model.CurrencyType
+import com.wallet.ui.theme.AppCardColors
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -30,9 +31,7 @@ fun SummaryCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f)
-        )
+        colors = AppCardColors.primaryContainer()
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -96,9 +95,7 @@ private fun StatCard(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f)
-        )
+        colors = AppCardColors.surfaceVariant()
     ) {
         Column(
             modifier = Modifier.padding(16.dp),

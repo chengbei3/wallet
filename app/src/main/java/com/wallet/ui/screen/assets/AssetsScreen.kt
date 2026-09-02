@@ -32,7 +32,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -49,8 +48,9 @@ import androidx.compose.ui.unit.dp
 import com.wallet.data.model.Account
 import com.wallet.data.model.CurrencyType
 import com.wallet.ui.components.SummaryCard
-import com.wallet.ui.components.WallpaperBackground
+import com.wallet.ui.components.TransparentBarDefaults
 import com.wallet.ui.components.formatCurrency
+import com.wallet.ui.theme.AppCardColors
 import com.wallet.ui.viewmodel.WalletViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,35 +64,30 @@ fun AssetsScreen(viewModel: WalletViewModel) {
     val usdTotal = accounts.filter { it.currency == CurrencyType.USD }.sumOf { it.balance }
     val cnyTotal = accounts.filter { it.currency == CurrencyType.CNY }.sumOf { it.balance }
 
-    WallpaperBackground(
-        wallpaperUri = profile.assetsWallpaperUri,
-        overlayAlpha = profile.wallpaperOverlayAlpha
-    ) {
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                TopAppBar(
-                    title = { Text("资产管理") },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
-                    )
-                )
-            },
-            floatingActionButton = {
-                FloatingActionButton(
-                    onClick = { showAddSheet = true },
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "添加账户")
-                }
-            }
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 16.dp)
+    Scaffold(
+        containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+        topBar = {
+            TopAppBar(
+                title = { Text("资产管理") },
+                colors = TransparentBarDefaults.topAppBarColors()
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddSheet = true },
+                containerColor = MaterialTheme.colorScheme.primary
             ) {
+                Icon(Icons.Default.Add, contentDescription = "添加账户")
+            }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp)
+        ) {
                 SummaryCard(
                     title = "总资产（折合人民币）",
                     amount = totalAssets,
@@ -111,6 +106,7 @@ fun AssetsScreen(viewModel: WalletViewModel) {
                     text = "账户列表",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
 
@@ -128,7 +124,6 @@ fun AssetsScreen(viewModel: WalletViewModel) {
                 }
             }
         }
-    }
 
     if (showAddSheet) {
         AddAccountSheet(
@@ -154,9 +149,7 @@ private fun AccountItem(
         modifier = Modifier.fillMaxWidth(),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
-        ),
+        colors = AppCardColors.surface(),
     ) {
         Row(
             modifier = Modifier
@@ -180,7 +173,8 @@ private fun AccountItem(
                     Text(
                         text = account.name,
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = account.currency.label,
@@ -194,7 +188,8 @@ private fun AccountItem(
                     Text(
                         text = formatCurrency(account.balance, account.currency),
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     if (account.currency == CurrencyType.USD) {
                         Text(
