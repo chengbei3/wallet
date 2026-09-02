@@ -5,6 +5,7 @@ import com.wallet.data.model.Account
 import com.wallet.data.model.CurrencyType
 import com.wallet.data.model.FontScale
 import com.wallet.data.model.LauncherIconStyle
+import com.wallet.data.model.Transaction
 import com.wallet.data.model.UserProfile
 import org.json.JSONArray
 import org.json.JSONObject
@@ -49,6 +50,20 @@ class WalletPreferences(context: Context) {
             )
         }
         prefs.edit().putString(KEY_ACCOUNTS, array.toString()).apply()
+    }
+
+    fun loadTransactions(): List<Transaction> {
+        val json = prefs.getString(KEY_TRANSACTIONS, null) ?: return emptyList()
+        return try {
+            WalletDataSerializer.parseTransactions(org.json.JSONArray(json))
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun saveTransactions(transactions: List<Transaction>) {
+        val json = WalletDataSerializer.transactionsToJson(transactions).toString()
+        prefs.edit().putString(KEY_TRANSACTIONS, json).apply()
     }
 
     fun loadProfile(): UserProfile {
@@ -107,6 +122,7 @@ class WalletPreferences(context: Context) {
     companion object {
         private const val PREFS_NAME = "wallet_prefs"
         private const val KEY_ACCOUNTS = "accounts"
+        private const val KEY_TRANSACTIONS = "transactions"
         private const val KEY_NICKNAME = "nickname"
         private const val KEY_EMAIL = "email"
         private const val KEY_CURRENCY = "currency"

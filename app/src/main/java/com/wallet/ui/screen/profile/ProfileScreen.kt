@@ -27,15 +27,17 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.FormatSize
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Photo
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -69,6 +71,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.wallet.data.model.UserProfile
 import com.wallet.data.model.WallpaperPage
+import com.wallet.data.repository.WalletRepository
 import com.wallet.ui.components.WallpaperBackground
 import com.wallet.ui.viewmodel.WalletViewModel
 
@@ -89,6 +92,44 @@ fun ProfileScreen(viewModel: WalletViewModel) {
     var showOverlaySheet by remember { mutableStateOf(false) }
     var showIconSheet by remember { mutableStateOf(false) }
     var pendingImagePick by remember { mutableStateOf<PendingImagePick?>(null) }
+    var pendingImportJson by remember { mutableStateOf<String?>(null) }
+    var showImportDialog by remember { mutableStateOf(false) }
+    var importResultMessage by remember { mutableStateOf<String?>(null) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { stream ->
+                    stream.write(viewModel.exportBackupJson().toByteArray(Charsets.UTF_8))
+                }
+                importResultMessage = "数据已导出成功"
+            }.onFailure {
+                importResultMessage = "导出失败：${it.message}"
+            }
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            runCatching {
+                val json = context.contentResolver.openInputStream(uri)?.use { stream ->
+                    stream.readBytes().toString(Charsets.UTF_8)
+                }
+                if (json.isNullOrBlank()) {
+                    importResultMessage = "文件内容为空"
+                } else {
+                    pendingImportJson = json
+                    showImportDialog = true
+                }
+            }.onFailure {
+                importResultMessage = "读取文件失败：${it.message}"
+            }
+        }
+    }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -272,6 +313,30 @@ fun ProfileScreen(viewModel: WalletViewModel) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 SettingsSection(
+                    title = "数据管理",
+                    items = listOf(
+                        SettingsItem(
+                            icon = Icons.Default.FileDownload,
+                            title = "导出记账数据",
+                            subtitle = "导出账户与账单为 JSON 文件",
+                            onClick = {
+                                exportLauncher.launch("wallet_backup_${System.currentTimeMillis()}.json")
+                            }
+                        ),
+                        SettingsItem(
+                            icon = Icons.Default.FileUpload,
+                            title = "导入记账数据",
+                            subtitle = "从 JSON 文件恢复数据",
+                            onClick = {
+                                importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                            }
+                        )
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                SettingsSection(
                     title = "其他",
                     items = listOf(
                         SettingsItem(
@@ -355,6 +420,66 @@ fun ProfileScreen(viewModel: WalletViewModel) {
             },
             onClearCustomIcon = {
                 viewModel.updateProfile(profile.copy(customAppIconUri = null))
+            }
+        )
+    }
+
+    if (showImportDialog && pendingImportJson != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showImportDialog = false
+                pendingImportJson = null
+            },
+            title = { Text("导入数据") },
+            text = { Text("请选择导入方式：\n\n· 合并：保留现有数据，仅添加新记录\n· 覆盖：用备份文件完全替换现有数据") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val result = viewModel.importBackupJson(pendingImportJson!!, replaceExisting = false)
+                    showImportDialog = false
+                    pendingImportJson = null
+                    importResultMessage = when (result) {
+                        is WalletRepository.ImportResult.Success ->
+                            "合并成功：共 ${result.transactionCount} 条账单，${result.accountCount} 个账户"
+                        is WalletRepository.ImportResult.Error -> result.message
+                    }
+                }) {
+                    Text("合并导入")
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        val result = viewModel.importBackupJson(pendingImportJson!!, replaceExisting = true)
+                        showImportDialog = false
+                        pendingImportJson = null
+                        importResultMessage = when (result) {
+                            is WalletRepository.ImportResult.Success ->
+                                "覆盖成功：共 ${result.transactionCount} 条账单，${result.accountCount} 个账户"
+                            is WalletRepository.ImportResult.Error -> result.message
+                        }
+                    }) {
+                        Text("覆盖导入")
+                    }
+                    TextButton(onClick = {
+                        showImportDialog = false
+                        pendingImportJson = null
+                    }) {
+                        Text("取消")
+                    }
+                }
+            }
+        )
+    }
+
+    importResultMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { importResultMessage = null },
+            title = { Text("提示") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { importResultMessage = null }) {
+                    Text("确定")
+                }
             }
         )
     }

@@ -1,13 +1,18 @@
 package com.wallet.data.repository
 
 import android.content.Context
+import com.wallet.data.local.TransactionStatisticsCalculator
+import com.wallet.data.local.WalletDataSerializer
 import com.wallet.data.local.WalletPreferences
 import com.wallet.data.model.Account
 import com.wallet.data.model.CurrencyType
+import com.wallet.data.model.PeriodStatistics
+import com.wallet.data.model.StatisticsPeriod
 import com.wallet.data.model.Transaction
 import com.wallet.data.model.TransactionType
 import com.wallet.data.model.UserProfile
 import com.wallet.data.model.WallpaperPage
+import com.wallet.data.model.WalletBackup
 import com.wallet.notification.NotificationScheduler
 import com.wallet.util.LauncherIconManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +36,7 @@ class WalletRepository(context: Context) {
     private val _accounts = MutableStateFlow(preferences.loadAccounts() ?: defaultAccounts)
     val accounts: StateFlow<List<Account>> = _accounts.asStateFlow()
 
-    private val _transactions = MutableStateFlow<List<Transaction>>(emptyList())
+    private val _transactions = MutableStateFlow(preferences.loadTransactions())
     val transactions: StateFlow<List<Transaction>> = _transactions.asStateFlow()
 
     private val _userProfile = MutableStateFlow(preferences.loadProfile())
@@ -51,6 +56,69 @@ class WalletRepository(context: Context) {
                 CurrencyType.CNY -> account.balance
                 CurrencyType.USD -> account.balance * usdToCnyRate
             }
+        }
+    }
+
+    fun getStatistics(
+        period: StatisticsPeriod,
+        year: Int,
+        month: Int
+    ): PeriodStatistics {
+        return TransactionStatisticsCalculator.calculate(
+            transactions = _transactions.value,
+            period = period,
+            year = year,
+            month = month
+        )
+    }
+
+    fun exportBackup(): WalletBackup {
+        return WalletBackup(
+            accounts = _accounts.value,
+            transactions = _transactions.value
+        )
+    }
+
+    fun exportBackupJson(): String {
+        return WalletDataSerializer.toJson(exportBackup())
+    }
+
+    sealed class ImportResult {
+        data class Success(val transactionCount: Int, val accountCount: Int) : ImportResult()
+        data class Error(val message: String) : ImportResult()
+    }
+
+    fun importBackupJson(json: String, replaceExisting: Boolean): ImportResult {
+        return try {
+            val backup = WalletDataSerializer.fromJson(json)
+            if (backup.transactions.isEmpty() && backup.accounts.isEmpty()) {
+                return ImportResult.Error("备份文件为空")
+            }
+
+            if (replaceExisting) {
+                if (backup.accounts.isNotEmpty()) {
+                    _accounts.value = backup.accounts
+                }
+                _transactions.value = backup.transactions.sortedByDescending { it.timestamp }
+            } else {
+                val existingTxIds = _transactions.value.map { it.id }.toSet()
+                val newTransactions = backup.transactions.filter { it.id !in existingTxIds }
+                _transactions.update { current ->
+                    (current + newTransactions).sortedByDescending { it.timestamp }
+                }
+
+                val existingAccountIds = _accounts.value.map { it.id }.toSet()
+                val newAccounts = backup.accounts.filter { it.id !in existingAccountIds }
+                _accounts.update { it + newAccounts }
+            }
+
+            persistSnapshot()
+            ImportResult.Success(
+                transactionCount = _transactions.value.size,
+                accountCount = _accounts.value.size
+            )
+        } catch (e: Exception) {
+            ImportResult.Error(e.message ?: "导入失败")
         }
     }
 
@@ -153,23 +221,18 @@ class WalletRepository(context: Context) {
     }
 
     fun getMonthlyIncome(): Double {
-        val now = System.currentTimeMillis()
-        val monthStart = now - 30L * 24 * 60 * 60 * 1000
-        return _transactions.value
-            .filter { it.type == TransactionType.INCOME && it.timestamp >= monthStart }
-            .sumOf { it.amount }
+        val (year, month) = TransactionStatisticsCalculator.getCurrentYearMonth()
+        return getStatistics(StatisticsPeriod.MONTH, year, month).income
     }
 
     fun getMonthlyExpense(): Double {
-        val now = System.currentTimeMillis()
-        val monthStart = now - 30L * 24 * 60 * 60 * 1000
-        return _transactions.value
-            .filter { it.type == TransactionType.EXPENSE && it.timestamp >= monthStart }
-            .sumOf { it.amount }
+        val (year, month) = TransactionStatisticsCalculator.getCurrentYearMonth()
+        return getStatistics(StatisticsPeriod.MONTH, year, month).expense
     }
 
     private fun persistSnapshot() {
         preferences.saveAccounts(_accounts.value)
+        preferences.saveTransactions(_transactions.value)
         preferences.saveTotalAssets(totalAssets)
     }
 

@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -63,6 +64,7 @@ fun AccountingScreen(viewModel: WalletViewModel) {
     val accounts by viewModel.accounts.collectAsState()
     val profile by viewModel.userProfile.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
+    var showStatsSheet by remember { mutableStateOf(false) }
 
     WallpaperBackground(
         wallpaperUri = profile.accountingWallpaperUri,
@@ -73,6 +75,14 @@ fun AccountingScreen(viewModel: WalletViewModel) {
             topBar = {
                 TopAppBar(
                     title = { Text("记账") },
+                    actions = {
+                        IconButton(onClick = { showStatsSheet = true }) {
+                            Icon(
+                                Icons.Default.BarChart,
+                                contentDescription = "统计"
+                            )
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
                     )
@@ -134,6 +144,13 @@ fun AccountingScreen(viewModel: WalletViewModel) {
                 viewModel.addTransaction(amount, type, category, note, accountId)
                 showAddSheet = false
             }
+        )
+    }
+
+    if (showStatsSheet) {
+        StatisticsSheet(
+            viewModel = viewModel,
+            onDismiss = { showStatsSheet = false }
         )
     }
 }

@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import com.wallet.data.model.Account
 import com.wallet.data.model.CurrencyType
+import com.wallet.data.model.PeriodStatistics
+import com.wallet.data.model.StatisticsPeriod
 import com.wallet.data.model.Transaction
 import com.wallet.data.model.TransactionType
 import com.wallet.data.model.UserProfile
@@ -27,6 +29,18 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
 
     val monthlyExpense: Double
         get() = repository.getMonthlyExpense()
+
+    fun getStatistics(period: StatisticsPeriod, year: Int, month: Int): PeriodStatistics {
+        return repository.getStatistics(period, year, month)
+    }
+
+    fun exportBackupJson(): String {
+        return repository.exportBackupJson()
+    }
+
+    fun importBackupJson(json: String, replaceExisting: Boolean): WalletRepository.ImportResult {
+        return repository.importBackupJson(json, replaceExisting)
+    }
 
     fun addTransaction(
         amount: Double,
