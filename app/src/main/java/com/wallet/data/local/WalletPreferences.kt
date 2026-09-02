@@ -2,6 +2,7 @@ package com.wallet.data.local
 
 import android.content.Context
 import com.wallet.data.model.Account
+import com.wallet.data.model.AppThemeColor
 import com.wallet.data.model.CurrencyType
 import com.wallet.data.model.FontScale
 import com.wallet.data.model.LauncherIconStyle
@@ -74,10 +75,16 @@ class WalletPreferences(context: Context) {
             email = prefs.getString(KEY_EMAIL, "") ?: "",
             currency = prefs.getString(KEY_CURRENCY, "CNY") ?: "CNY",
             darkMode = prefs.getBoolean(KEY_DARK_MODE, false),
+            themeColor = runCatching {
+                AppThemeColor.valueOf(prefs.getString(KEY_THEME_COLOR, AppThemeColor.GREEN.name)!!)
+            }.getOrDefault(AppThemeColor.GREEN),
             notificationsEnabled = prefs.getBoolean(KEY_NOTIFICATIONS_ENABLED, true),
             usdToCnyRate = prefs.getFloat(KEY_USD_TO_CNY_RATE, 7.25f).toDouble(),
             wallpaperOverlayAlpha = prefs.getFloat(KEY_WALLPAPER_OVERLAY_ALPHA, 0.55f),
             tabBarOverlayAlpha = prefs.getFloat(KEY_TAB_BAR_OVERLAY_ALPHA, 0f),
+            accountingPageTabAlpha = prefs.getFloat(KEY_ACCOUNTING_PAGE_TAB_ALPHA, 0f),
+            assetsPageTabAlpha = prefs.getFloat(KEY_ASSETS_PAGE_TAB_ALPHA, 0f),
+            profilePageTabAlpha = prefs.getFloat(KEY_PROFILE_PAGE_TAB_ALPHA, 0f),
             fontScale = runCatching { FontScale.valueOf(fontScaleName!!) }.getOrDefault(FontScale.NORMAL),
             splashImageUri = prefs.getString(KEY_SPLASH_IMAGE, null),
             customAppIconUri = prefs.getString(KEY_CUSTOM_APP_ICON, null),
@@ -98,10 +105,14 @@ class WalletPreferences(context: Context) {
             .putString(KEY_EMAIL, profile.email)
             .putString(KEY_CURRENCY, profile.currency)
             .putBoolean(KEY_DARK_MODE, profile.darkMode)
+            .putString(KEY_THEME_COLOR, profile.themeColor.name)
             .putBoolean(KEY_NOTIFICATIONS_ENABLED, profile.notificationsEnabled)
             .putFloat(KEY_USD_TO_CNY_RATE, profile.usdToCnyRate.toFloat())
             .putFloat(KEY_WALLPAPER_OVERLAY_ALPHA, profile.wallpaperOverlayAlpha)
             .putFloat(KEY_TAB_BAR_OVERLAY_ALPHA, profile.tabBarOverlayAlpha)
+            .putFloat(KEY_ACCOUNTING_PAGE_TAB_ALPHA, profile.accountingPageTabAlpha)
+            .putFloat(KEY_ASSETS_PAGE_TAB_ALPHA, profile.assetsPageTabAlpha)
+            .putFloat(KEY_PROFILE_PAGE_TAB_ALPHA, profile.profilePageTabAlpha)
             .putString(KEY_FONT_SCALE, profile.fontScale.name)
             .putString(KEY_SPLASH_IMAGE, profile.splashImageUri)
             .putString(KEY_CUSTOM_APP_ICON, profile.customAppIconUri)
@@ -133,10 +144,14 @@ class WalletPreferences(context: Context) {
         private const val KEY_EMAIL = "email"
         private const val KEY_CURRENCY = "currency"
         private const val KEY_DARK_MODE = "dark_mode"
+        private const val KEY_THEME_COLOR = "theme_color"
         private const val KEY_NOTIFICATIONS_ENABLED = "notifications_enabled"
         private const val KEY_USD_TO_CNY_RATE = "usd_to_cny_rate"
         private const val KEY_WALLPAPER_OVERLAY_ALPHA = "wallpaper_overlay_alpha"
         private const val KEY_TAB_BAR_OVERLAY_ALPHA = "tab_bar_overlay_alpha"
+        private const val KEY_ACCOUNTING_PAGE_TAB_ALPHA = "accounting_page_tab_alpha"
+        private const val KEY_ASSETS_PAGE_TAB_ALPHA = "assets_page_tab_alpha"
+        private const val KEY_PROFILE_PAGE_TAB_ALPHA = "profile_page_tab_alpha"
         private const val KEY_FONT_SCALE = "font_scale"
         private const val KEY_SPLASH_IMAGE = "splash_image"
         private const val KEY_CUSTOM_APP_ICON = "custom_app_icon"

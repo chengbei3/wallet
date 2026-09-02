@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -35,10 +36,80 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.wallet.data.model.AppThemeColor
 import com.wallet.data.model.FontScale
 import com.wallet.data.model.LauncherIconStyle
 import com.wallet.data.model.UserProfile
 import com.wallet.R
+
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Color
+import com.wallet.ui.theme.themePreviewColor
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ThemeColorSheet(
+    current: AppThemeColor,
+    onDismiss: () -> Unit,
+    onConfirm: (AppThemeColor) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var selected by remember { mutableStateOf(current) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "页面主题色",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "切换应用主色调，可与深色模式搭配使用",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            AppThemeColor.entries.forEach { themeColor ->
+                val preview = themePreviewColor(themeColor)
+                FilterChip(
+                    selected = selected == themeColor,
+                    onClick = { selected = themeColor },
+                    label = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clip(CircleShape)
+                                    .background(preview)
+                                    .border(
+                                        width = 1.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                        shape = CircleShape
+                                    )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(themeColor.label)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            TextButton(
+                onClick = { onConfirm(selected) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("保存")
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,7 +199,42 @@ fun WallpaperOverlaySheet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun PageTabBarOverlaySheet(
+    pageTitle: String,
+    currentAlpha: Float,
+    onDismiss: () -> Unit,
+    onConfirm: (Float) -> Unit
+) {
+    OverlayAlphaSheet(
+        title = "${pageTitle}页页签透明度",
+        description = "调节页面顶部标题栏背景透明度，0% 为完全透明",
+        currentAlpha = currentAlpha,
+        onDismiss = onDismiss,
+        onConfirm = onConfirm
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun TabBarOverlaySheet(
+    currentAlpha: Float,
+    onDismiss: () -> Unit,
+    onConfirm: (Float) -> Unit
+) {
+    OverlayAlphaSheet(
+        title = "底部标签栏透明度",
+        description = "0% 为完全透明，调高可让标签更易辨认",
+        currentAlpha = currentAlpha,
+        onDismiss = onDismiss,
+        onConfirm = onConfirm
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OverlayAlphaSheet(
+    title: String,
+    description: String,
     currentAlpha: Float,
     onDismiss: () -> Unit,
     onConfirm: (Float) -> Unit
@@ -145,12 +251,12 @@ fun TabBarOverlaySheet(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "底部标签栏透明度",
+                text = title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "0% 为完全透明，调高可让标签更易辨认",
+                text = description,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

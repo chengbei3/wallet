@@ -28,12 +28,12 @@ class MainActivity : ComponentActivity() {
 
             WalletTheme(
                 darkTheme = isDarkTheme,
-                fontScale = profile.fontScale
+                fontScale = profile.fontScale,
+                themeColor = profile.themeColor
             ) {
                 if (showSplash) {
                     SplashScreen(
                         splashImageUri = profile.splashImageUri,
-                        customAppIconUri = profile.customAppIconUri,
                         onFinished = { showSplash = false }
                     )
                 } else {

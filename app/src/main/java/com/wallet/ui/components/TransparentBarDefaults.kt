@@ -1,6 +1,7 @@
 package com.wallet.ui.components
 
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.TopAppBar
@@ -11,18 +12,27 @@ import androidx.compose.ui.graphics.Color
 
 object TransparentBarDefaults {
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun AppTopAppBar(
         title: @Composable () -> Unit,
         modifier: Modifier = Modifier,
+        containerAlpha: Float = 0f,
         actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {}
     ) {
+        val containerColor = MaterialTheme.colorScheme.surface.copy(alpha = containerAlpha)
         TopAppBar(
             title = title,
             actions = actions,
             modifier = modifier,
             windowInsets = WindowInsets(0, 0, 0, 0),
-            colors = topAppBarColors()
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = containerColor,
+                scrolledContainerColor = containerColor,
+                navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                titleContentColor = MaterialTheme.colorScheme.onBackground,
+                actionIconContentColor = MaterialTheme.colorScheme.onBackground
+            )
         )
     }
 

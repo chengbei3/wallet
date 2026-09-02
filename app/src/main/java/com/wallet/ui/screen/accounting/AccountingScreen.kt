@@ -114,6 +114,7 @@ fun AccountingScreen(viewModel: WalletViewModel) {
                 viewModel = viewModel,
                 transactions = transactions,
                 accounts = accounts,
+                topBarAlpha = profile.accountingPageTabAlpha,
                 onShowStats = { showStatsSheet = true },
                 onShowAdd = { showAddSheet = true }
             )
@@ -145,6 +146,7 @@ private fun AccountingContent(
     viewModel: WalletViewModel,
     transactions: List<Transaction>,
     accounts: List<com.wallet.data.model.Account>,
+    topBarAlpha: Float,
     onShowStats: () -> Unit,
     onShowAdd: () -> Unit
 ) {
@@ -154,6 +156,7 @@ private fun AccountingContent(
         topBar = {
             TransparentBarDefaults.AppTopAppBar(
                 modifier = Modifier.statusBarsPadding(),
+                containerAlpha = topBarAlpha,
                 title = { Text("记账") },
                 actions = {
                     IconButton(onClick = onShowStats) {

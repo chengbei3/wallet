@@ -70,6 +70,7 @@ fun AssetsScreen(viewModel: WalletViewModel) {
         topBar = {
             TransparentBarDefaults.AppTopAppBar(
                 modifier = Modifier.statusBarsPadding(),
+                containerAlpha = profile.assetsPageTabAlpha,
                 title = { Text("资产管理") }
             )
         },

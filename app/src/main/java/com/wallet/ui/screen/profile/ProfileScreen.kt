@@ -35,7 +35,7 @@ import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Security
@@ -72,6 +72,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.wallet.data.model.UserProfile
 import com.wallet.data.model.WallpaperPage
+import com.wallet.data.model.pageTabBarAlpha
+import com.wallet.data.model.withPageTabBarAlpha
 import com.wallet.data.repository.WalletRepository
 import com.wallet.ui.components.TransparentBarDefaults
 import com.wallet.ui.theme.AppCardColors
@@ -92,8 +94,10 @@ fun ProfileScreen(viewModel: WalletViewModel) {
     var showEditSheet by remember { mutableStateOf(false) }
     var showRateSheet by remember { mutableStateOf(false) }
     var showFontScaleSheet by remember { mutableStateOf(false) }
+    var showThemeColorSheet by remember { mutableStateOf(false) }
     var showOverlaySheet by remember { mutableStateOf(false) }
     var showTabBarSheet by remember { mutableStateOf(false) }
+    var editingPageTabAlpha by remember { mutableStateOf<WallpaperPage?>(null) }
     var showIconSheet by remember { mutableStateOf(false) }
     var pendingImagePick by remember { mutableStateOf<PendingImagePick?>(null) }
     var pendingImportJson by remember { mutableStateOf<String?>(null) }
@@ -181,6 +185,7 @@ fun ProfileScreen(viewModel: WalletViewModel) {
         topBar = {
             TransparentBarDefaults.AppTopAppBar(
                 modifier = Modifier.statusBarsPadding(),
+                containerAlpha = profile.profilePageTabAlpha,
                 title = { Text("我的") }
             )
         }
@@ -269,6 +274,12 @@ fun ProfileScreen(viewModel: WalletViewModel) {
                     title = "个性化",
                     items = listOf(
                         SettingsItem(
+                            icon = Icons.Default.Palette,
+                            title = "页面主题色",
+                            subtitle = profile.themeColor.label,
+                            onClick = { showThemeColorSheet = true }
+                        ),
+                        SettingsItem(
                             icon = Icons.Default.FormatSize,
                             title = "字体大小",
                             subtitle = profile.fontScale.label,
@@ -312,26 +323,32 @@ fun ProfileScreen(viewModel: WalletViewModel) {
 
                 SettingsSection(
                     title = "背景壁纸",
-                    items = WallpaperPage.entries.map { page ->
+                    items = WallpaperPage.entries.flatMap { page ->
                         val uri = when (page) {
                             WallpaperPage.ACCOUNTING -> profile.accountingWallpaperUri
                             WallpaperPage.ASSETS -> profile.assetsWallpaperUri
                             WallpaperPage.PROFILE -> profile.profileWallpaperUri
                         }
-                        SettingsItem(
-                            icon = Icons.Default.Image,
-                            title = "${page.title}页壁纸",
-                            subtitle = if (uri != null) "已设置，点击更换" else "未设置，点击选择图片",
-                            onClick = {
-                                pendingImagePick = PendingImagePick.Wallpaper(page)
-                                imagePickerLauncher.launch(arrayOf("image/*"))
-                            },
-                            trailingAction = if (uri != null) {
-                                {
-                                    viewModel.updateWallpaper(page, null)
-                                }
-                            } else null,
-                            trailingActionLabel = "清除"
+                        listOf(
+                            SettingsItem(
+                                icon = Icons.Default.Image,
+                                title = "${page.title}页壁纸",
+                                subtitle = if (uri != null) "已设置，点击更换" else "未设置，点击选择图片",
+                                onClick = {
+                                    pendingImagePick = PendingImagePick.Wallpaper(page)
+                                    imagePickerLauncher.launch(arrayOf("image/*"))
+                                },
+                                trailingAction = if (uri != null) {
+                                    { viewModel.updateWallpaper(page, null) }
+                                } else null,
+                                trailingActionLabel = "清除"
+                            ),
+                            SettingsItem(
+                                icon = Icons.Default.Tab,
+                                title = "${page.title}页页签透明度",
+                                subtitle = "${(profile.pageTabBarAlpha(page) * 100).toInt()}%，0% 为完全透明",
+                                onClick = { editingPageTabAlpha = page }
+                            )
                         )
                     }
                 )
@@ -409,6 +426,17 @@ fun ProfileScreen(viewModel: WalletViewModel) {
         )
     }
 
+    if (showThemeColorSheet) {
+        ThemeColorSheet(
+            current = profile.themeColor,
+            onDismiss = { showThemeColorSheet = false },
+            onConfirm = { themeColor ->
+                viewModel.updateProfile(profile.copy(themeColor = themeColor))
+                showThemeColorSheet = false
+            }
+        )
+    }
+
     if (showFontScaleSheet) {
         FontScaleSheet(
             current = profile.fontScale,
@@ -438,6 +466,18 @@ fun ProfileScreen(viewModel: WalletViewModel) {
             onConfirm = { alpha ->
                 viewModel.updateProfile(profile.copy(tabBarOverlayAlpha = alpha))
                 showTabBarSheet = false
+            }
+        )
+    }
+
+    editingPageTabAlpha?.let { page ->
+        PageTabBarOverlaySheet(
+            pageTitle = page.title,
+            currentAlpha = profile.pageTabBarAlpha(page),
+            onDismiss = { editingPageTabAlpha = null },
+            onConfirm = { alpha ->
+                viewModel.updateProfile(profile.withPageTabBarAlpha(page, alpha))
+                editingPageTabAlpha = null
             }
         )
     }
