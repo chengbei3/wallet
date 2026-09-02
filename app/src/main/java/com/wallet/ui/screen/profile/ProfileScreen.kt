@@ -26,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CurrencyExchange
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.FileDownload
@@ -36,7 +35,6 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Tab
@@ -96,7 +94,6 @@ fun ProfileScreen(
     var showEditSheet by remember { mutableStateOf(false) }
     var showRateSheet by remember { mutableStateOf(false) }
     var showFontScaleSheet by remember { mutableStateOf(false) }
-    var showThemeColorSheet by remember { mutableStateOf(false) }
     var showOverlaySheet by remember { mutableStateOf(false) }
     var showCardBgSheet by remember { mutableStateOf(false) }
     var showTabBarSheet by remember { mutableStateOf(false) }
@@ -264,16 +261,6 @@ fun ProfileScreen(
                             }
                         ),
                         SettingsItem(
-                            icon = Icons.Default.DarkMode,
-                            title = "深色模式",
-                            subtitle = if (profile.darkMode) "已开启深色主题" else "关闭时跟随系统",
-                            showSwitch = true,
-                            switchChecked = profile.darkMode,
-                            onSwitchChange = {
-                                viewModel.updateProfile(profile.copy(darkMode = it))
-                            }
-                        ),
-                        SettingsItem(
                             icon = Icons.Default.Add,
                             title = "启动时打开记账",
                             subtitle = if (profile.openAddTransactionOnStart) {
@@ -295,12 +282,6 @@ fun ProfileScreen(
                 SettingsSection(
                     title = "个性化",
                     items = listOf(
-                        SettingsItem(
-                            icon = Icons.Default.Palette,
-                            title = "页面主题色",
-                            subtitle = profile.themeColor.label,
-                            onClick = { showThemeColorSheet = true }
-                        ),
                         SettingsItem(
                             icon = Icons.Default.FormatSize,
                             title = "字体大小",
@@ -434,17 +415,6 @@ fun ProfileScreen(
             onConfirm = { rate ->
                 viewModel.updateExchangeRate(rate)
                 showRateSheet = false
-            }
-        )
-    }
-
-    if (showThemeColorSheet) {
-        ThemeColorSheet(
-            current = profile.themeColor,
-            onDismiss = { showThemeColorSheet = false },
-            onConfirm = { themeColor ->
-                viewModel.updateProfile(profile.copy(themeColor = themeColor))
-                showThemeColorSheet = false
             }
         )
     }

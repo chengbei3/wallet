@@ -1,6 +1,8 @@
 package com.wallet.ui.screen.accounting
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,15 +19,18 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,21 +50,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.wallet.data.model.Category
+import androidx.compose.ui.unit.sp
 import com.wallet.data.model.Transaction
 import com.wallet.data.model.TransactionType
 import com.wallet.data.model.expenseCategories
 import com.wallet.data.model.incomeCategories
+import com.wallet.ui.components.AmountNumpad
 import com.wallet.ui.components.StatRow
+import com.wallet.ui.components.appendAmountInput
 import com.wallet.ui.theme.AppCard
 import com.wallet.ui.theme.AppCardColors
 import com.wallet.ui.components.TransparentBarDefaults
 import com.wallet.ui.components.formatCurrency
 import com.wallet.ui.components.formatDate
+import com.wallet.ui.theme.ExpenseRed
+import com.wallet.ui.theme.IncomeGreen
 import com.wallet.ui.viewmodel.WalletViewModel
 import kotlinx.coroutines.delay
 
@@ -364,12 +376,16 @@ private fun AddTransactionSheet(
     var selectedCategory by remember { mutableStateOf(expenseCategories.first()) }
     var selectedAccountId by remember { mutableStateOf(accounts.firstOrNull()?.id ?: "") }
     var excludeFromStats by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     val categories = if (selectedType == TransactionType.EXPENSE) {
         expenseCategories
     } else {
         incomeCategories
     }
+    val canSubmit = amountText.toDoubleOrNull()?.let { it > 0 } == true &&
+        selectedAccountId.isNotEmpty()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -378,9 +394,10 @@ private fun AddTransactionSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text(
                 text = "添加记账",
@@ -389,31 +406,68 @@ private fun AddTransactionSheet(
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
+                HighContrastChip(
                     selected = selectedType == TransactionType.EXPENSE,
                     onClick = {
                         selectedType = TransactionType.EXPENSE
                         selectedCategory = expenseCategories.first()
                     },
-                    label = { Text("支出") }
+                    label = "支出",
+                    selectedContainer = ExpenseRed,
+                    selectedContent = Color.White
                 )
-                FilterChip(
+                HighContrastChip(
                     selected = selectedType == TransactionType.INCOME,
                     onClick = {
                         selectedType = TransactionType.INCOME
                         selectedCategory = incomeCategories.first()
                     },
-                    label = { Text("收入") }
+                    label = "收入",
+                    selectedContainer = IncomeGreen,
+                    selectedContent = Color.White
                 )
             }
 
-            OutlinedTextField(
-                value = amountText,
-                onValueChange = { amountText = it },
-                label = { Text("金额") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "金额",
+                    style = MaterialTheme.typography.labelLarge
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF161616))
+                        .border(1.5.dp, Color(0xFF5C5C5C), RoundedCornerShape(12.dp))
+                        .clickable {
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                        }
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = "¥",
+                            color = Color(0xFFBDBDBD),
+                            fontSize = 20.sp,
+                            modifier = Modifier.padding(end = 8.dp, bottom = 2.dp)
+                        )
+                        Text(
+                            text = amountText.ifEmpty { "0" },
+                            color = if (amountText.isEmpty()) Color(0xFF6E6E6E) else Color.White,
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                AmountNumpad(
+                    onKey = { key ->
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                        amountText = appendAmountInput(amountText, key)
+                    }
+                )
+            }
 
             Text(
                 text = "分类",
@@ -421,10 +475,10 @@ private fun AddTransactionSheet(
             )
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(categories) { category ->
-                    CategoryChip(
-                        category = category,
+                    HighContrastChip(
                         selected = selectedCategory == category,
-                        onClick = { selectedCategory = category }
+                        onClick = { selectedCategory = category },
+                        label = category.name
                     )
                 }
             }
@@ -436,10 +490,10 @@ private fun AddTransactionSheet(
                 )
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(accounts) { account ->
-                        FilterChip(
+                        HighContrastChip(
                             selected = selectedAccountId == account.id,
                             onClick = { selectedAccountId = account.id },
-                            label = { Text(account.name) }
+                            label = account.name
                         )
                     }
                 }
@@ -474,7 +528,7 @@ private fun AddTransactionSheet(
                 }
             }
 
-            TextButton(
+            Button(
                 onClick = {
                     val amount = amountText.toDoubleOrNull()
                     if (amount != null && amount > 0 && selectedAccountId.isNotEmpty()) {
@@ -488,26 +542,47 @@ private fun AddTransactionSheet(
                         )
                     }
                 },
+                enabled = canSubmit,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
-                shape = RoundedCornerShape(12.dp)
+                    .height(52.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Color.Black,
+                    disabledContainerColor = Color(0xFF2A2A2A),
+                    disabledContentColor = Color(0xFF6E6E6E)
+                )
             ) {
-                Text("确认添加", style = MaterialTheme.typography.titleMedium)
+                Text("确认添加", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
 @Composable
-private fun CategoryChip(
-    category: Category,
+private fun HighContrastChip(
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    label: String,
+    selectedContainer: Color = Color.White,
+    selectedContent: Color = Color.Black
 ) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = { Text(category.name) }
-    )
+    val container = if (selected) selectedContainer else Color(0xFF1C1C1C)
+    val content = if (selected) selectedContent else Color(0xFF9E9E9E)
+    val border = if (selected) selectedContainer else Color(0xFF5C5C5C)
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(container)
+            .border(width = 1.5.dp, color = border, shape = RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = label,
+            color = content,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+        )
+    }
 }

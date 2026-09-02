@@ -75,10 +75,8 @@ class WalletPreferences(context: Context) {
             nickname = prefs.getString(KEY_NICKNAME, "用户") ?: "用户",
             email = prefs.getString(KEY_EMAIL, "") ?: "",
             currency = prefs.getString(KEY_CURRENCY, "CNY") ?: "CNY",
-            darkMode = prefs.getBoolean(KEY_DARK_MODE, false),
-            themeColor = runCatching {
-                AppThemeColor.valueOf(prefs.getString(KEY_THEME_COLOR, AppThemeColor.GREEN.name)!!)
-            }.getOrDefault(AppThemeColor.GREEN),
+            darkMode = true,
+            themeColor = AppThemeColor.BLACK,
             notificationsEnabled = prefs.getBoolean(KEY_NOTIFICATIONS_ENABLED, true),
             usdToCnyRate = loadExchangeRate(),
             wallpaperOverlayAlpha = prefs.getFloat(KEY_WALLPAPER_OVERLAY_ALPHA, 0.55f),
@@ -103,8 +101,8 @@ class WalletPreferences(context: Context) {
             .putString(KEY_NICKNAME, profile.nickname)
             .putString(KEY_EMAIL, profile.email)
             .putString(KEY_CURRENCY, profile.currency)
-            .putBoolean(KEY_DARK_MODE, profile.darkMode)
-            .putString(KEY_THEME_COLOR, profile.themeColor.name)
+            .putBoolean(KEY_DARK_MODE, true)
+            .putString(KEY_THEME_COLOR, AppThemeColor.BLACK.name)
             .putBoolean(KEY_NOTIFICATIONS_ENABLED, profile.notificationsEnabled)
             .putString(KEY_USD_TO_CNY_RATE, ExchangeRates.format(profile.usdToCnyRate))
             .putFloat(KEY_WALLPAPER_OVERLAY_ALPHA, profile.wallpaperOverlayAlpha)
