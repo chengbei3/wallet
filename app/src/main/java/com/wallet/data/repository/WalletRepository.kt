@@ -7,6 +7,7 @@ import com.wallet.data.model.CurrencyType
 import com.wallet.data.model.Transaction
 import com.wallet.data.model.TransactionType
 import com.wallet.data.model.UserProfile
+import com.wallet.data.model.WallpaperPage
 import com.wallet.notification.NotificationScheduler
 import com.wallet.util.LauncherIconManager
 import kotlinx.coroutines.flow.MutableStateFlow
