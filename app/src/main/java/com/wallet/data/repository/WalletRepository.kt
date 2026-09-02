@@ -11,6 +11,7 @@ import com.wallet.data.model.StatisticsPeriod
 import com.wallet.data.model.Transaction
 import com.wallet.data.model.TransactionType
 import com.wallet.data.model.UserProfile
+import com.wallet.data.model.LauncherIconStyle
 import com.wallet.data.model.WallpaperPage
 import com.wallet.data.model.WalletBackup
 import com.wallet.notification.NotificationScheduler
@@ -198,6 +199,14 @@ class WalletRepository(context: Context) {
         if (profile.launcherIconStyle != previous.launcherIconStyle) {
             LauncherIconManager.applyIcon(appContext, profile.launcherIconStyle)
         }
+        persistSnapshot()
+    }
+
+    fun updateLauncherIconStyle(style: LauncherIconStyle) {
+        val updated = _userProfile.value.copy(launcherIconStyle = style)
+        _userProfile.value = updated
+        preferences.saveProfile(updated)
+        LauncherIconManager.applyIcon(appContext, style)
         persistSnapshot()
     }
 

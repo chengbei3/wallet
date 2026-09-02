@@ -308,7 +308,12 @@ fun LauncherIconSheet(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "桌面图标可选用预设样式；自定义图片用于开屏和应用内展示",
+                text = "点击上方预设即可更换桌面图标；部分手机需等待几秒或重启桌面后生效",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "下方自定义图片仅用于开屏，不会更换桌面图标",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -353,7 +358,7 @@ fun LauncherIconSheet(
             }
 
             Text(
-                text = "自定义图标（开屏/应用内）",
+                text = "自定义图标（仅开屏）",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )

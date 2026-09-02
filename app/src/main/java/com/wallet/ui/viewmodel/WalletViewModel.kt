@@ -9,6 +9,7 @@ import com.wallet.data.model.StatisticsPeriod
 import com.wallet.data.model.Transaction
 import com.wallet.data.model.TransactionType
 import com.wallet.data.model.UserProfile
+import com.wallet.data.model.LauncherIconStyle
 import com.wallet.data.model.WallpaperPage
 import com.wallet.data.repository.WalletRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -84,6 +85,10 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateProfile(profile: UserProfile) {
         repository.updateProfile(profile)
+    }
+
+    fun updateLauncherIconStyle(style: LauncherIconStyle) {
+        repository.updateLauncherIconStyle(style)
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {

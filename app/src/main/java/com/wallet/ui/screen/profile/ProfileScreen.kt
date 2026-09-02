@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Photo
@@ -487,7 +488,8 @@ fun ProfileScreen(viewModel: WalletViewModel) {
             profile = profile,
             onDismiss = { showIconSheet = false },
             onSelectPreset = { style ->
-                viewModel.updateProfile(profile.copy(launcherIconStyle = style))
+                viewModel.updateLauncherIconStyle(style)
+                importResultMessage = "桌面图标已切换为「${style.label}」。若桌面未立即更新，请返回桌面等待几秒，或重启手机。"
             },
             onPickCustomIcon = {
                 showIconSheet = false
