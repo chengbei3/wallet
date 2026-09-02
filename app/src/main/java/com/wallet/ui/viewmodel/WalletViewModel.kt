@@ -11,7 +11,9 @@ import com.wallet.data.model.TransactionType
 import com.wallet.data.model.UserProfile
 import com.wallet.data.model.WallpaperPage
 import com.wallet.data.repository.WalletRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class WalletViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -20,6 +22,13 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
     val accounts: StateFlow<List<Account>> = repository.accounts
     val transactions: StateFlow<List<Transaction>> = repository.transactions
     val userProfile: StateFlow<UserProfile> = repository.userProfile
+
+    private val _accountingWallpaperOnly = MutableStateFlow(false)
+    val accountingWallpaperOnly: StateFlow<Boolean> = _accountingWallpaperOnly.asStateFlow()
+
+    fun setAccountingWallpaperOnly(enabled: Boolean) {
+        _accountingWallpaperOnly.value = enabled
+    }
 
     val totalAssets: Double
         get() = repository.totalAssets
@@ -47,9 +56,10 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
         type: TransactionType,
         category: String,
         note: String,
-        accountId: String
+        accountId: String,
+        excludeFromStats: Boolean = false
     ) {
-        repository.addTransaction(amount, type, category, note, accountId)
+        repository.addTransaction(amount, type, category, note, accountId, excludeFromStats)
     }
 
     fun deleteTransaction(transaction: Transaction) {

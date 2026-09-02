@@ -127,14 +127,16 @@ class WalletRepository(context: Context) {
         type: TransactionType,
         category: String,
         note: String,
-        accountId: String
+        accountId: String,
+        excludeFromStats: Boolean = false
     ) {
         val transaction = Transaction(
             amount = amount,
             type = type,
             category = category,
             note = note,
-            accountId = accountId
+            accountId = accountId,
+            excludeFromStats = excludeFromStats
         )
         _transactions.update { listOf(transaction) + it }
 

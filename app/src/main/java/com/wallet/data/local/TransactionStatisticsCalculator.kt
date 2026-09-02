@@ -16,12 +16,14 @@ object TransactionStatisticsCalculator {
         year: Int,
         month: Int
     ): PeriodStatistics {
+        val statsTransactions = transactions.filter { !it.excludeFromStats }
+
         val filtered = when (period) {
-            StatisticsPeriod.MONTH -> transactions.filter { tx ->
+            StatisticsPeriod.MONTH -> statsTransactions.filter { tx ->
                 val cal = Calendar.getInstance().apply { timeInMillis = tx.timestamp }
                 cal.get(Calendar.YEAR) == year && cal.get(Calendar.MONTH) == month
             }
-            StatisticsPeriod.YEAR -> transactions.filter { tx ->
+            StatisticsPeriod.YEAR -> statsTransactions.filter { tx ->
                 val cal = Calendar.getInstance().apply { timeInMillis = tx.timestamp }
                 cal.get(Calendar.YEAR) == year
             }

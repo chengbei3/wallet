@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
@@ -37,6 +39,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Tab
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -50,7 +53,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -79,6 +81,7 @@ private sealed class PendingImagePick {
     data class Wallpaper(val page: WallpaperPage) : PendingImagePick()
     data object Splash : PendingImagePick()
     data object AppIcon : PendingImagePick()
+    data object Avatar : PendingImagePick()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,6 +93,7 @@ fun ProfileScreen(viewModel: WalletViewModel) {
     var showRateSheet by remember { mutableStateOf(false) }
     var showFontScaleSheet by remember { mutableStateOf(false) }
     var showOverlaySheet by remember { mutableStateOf(false) }
+    var showTabBarSheet by remember { mutableStateOf(false) }
     var showIconSheet by remember { mutableStateOf(false) }
     var pendingImagePick by remember { mutableStateOf<PendingImagePick?>(null) }
     var pendingImportJson by remember { mutableStateOf<String?>(null) }
@@ -162,6 +166,9 @@ fun ProfileScreen(viewModel: WalletViewModel) {
                     PendingImagePick.AppIcon -> {
                         viewModel.updateProfile(profile.copy(customAppIconUri = uri.toString()))
                     }
+                    PendingImagePick.Avatar -> {
+                        viewModel.updateProfile(profile.copy(avatarUri = uri.toString()))
+                    }
                 }
             }
         }
@@ -172,9 +179,9 @@ fun ProfileScreen(viewModel: WalletViewModel) {
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
-            TopAppBar(
-                title = { Text("我的") },
-                colors = TransparentBarDefaults.topAppBarColors()
+            TransparentBarDefaults.AppTopAppBar(
+                modifier = Modifier.statusBarsPadding(),
+                title = { Text("我的") }
             )
         }
     ) { padding ->
@@ -187,7 +194,11 @@ fun ProfileScreen(viewModel: WalletViewModel) {
         ) {
                 ProfileHeader(
                     profile = profile,
-                    onEdit = { showEditSheet = true }
+                    onEdit = { showEditSheet = true },
+                    onAvatarClick = {
+                        pendingImagePick = PendingImagePick.Avatar
+                        imagePickerLauncher.launch(arrayOf("image/*"))
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -234,6 +245,20 @@ fun ProfileScreen(viewModel: WalletViewModel) {
                             onSwitchChange = {
                                 viewModel.updateProfile(profile.copy(darkMode = it))
                             }
+                        ),
+                        SettingsItem(
+                            icon = Icons.Default.Add,
+                            title = "启动时打开记账",
+                            subtitle = if (profile.openAddTransactionOnStart) {
+                                "进入应用自动弹出添加记账"
+                            } else {
+                                "已关闭"
+                            },
+                            showSwitch = true,
+                            switchChecked = profile.openAddTransactionOnStart,
+                            onSwitchChange = {
+                                viewModel.updateProfile(profile.copy(openAddTransactionOnStart = it))
+                            }
                         )
                     )
                 )
@@ -254,6 +279,12 @@ fun ProfileScreen(viewModel: WalletViewModel) {
                             title = "壁纸遮罩浓度",
                             subtitle = "${(profile.wallpaperOverlayAlpha * 100).toInt()}%，调低可让背景更清晰",
                             onClick = { showOverlaySheet = true }
+                        ),
+                        SettingsItem(
+                            icon = Icons.Default.Tab,
+                            title = "底部标签栏透明度",
+                            subtitle = "${(profile.tabBarOverlayAlpha * 100).toInt()}%，0% 为完全透明",
+                            onClick = { showTabBarSheet = true }
                         ),
                         SettingsItem(
                             icon = Icons.Default.Photo,
@@ -400,6 +431,17 @@ fun ProfileScreen(viewModel: WalletViewModel) {
         )
     }
 
+    if (showTabBarSheet) {
+        TabBarOverlaySheet(
+            currentAlpha = profile.tabBarOverlayAlpha,
+            onDismiss = { showTabBarSheet = false },
+            onConfirm = { alpha ->
+                viewModel.updateProfile(profile.copy(tabBarOverlayAlpha = alpha))
+                showTabBarSheet = false
+            }
+        )
+    }
+
     if (showIconSheet) {
         LauncherIconSheet(
             profile = profile,
@@ -482,7 +524,8 @@ fun ProfileScreen(viewModel: WalletViewModel) {
 @Composable
 private fun ProfileHeader(
     profile: UserProfile,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
+    onAvatarClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -497,26 +540,28 @@ private fun ProfileHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (profile.customAppIconUri != null) {
+            if (profile.avatarUri != null) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(profile.customAppIconUri)
+                        .data(profile.avatarUri)
                         .crossfade(true)
                         .build(),
-                    contentDescription = null,
+                    contentDescription = "头像",
                     modifier = Modifier
                         .size(64.dp)
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .clickable(onClick = onAvatarClick),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 Icon(
                     imageVector = Icons.Default.Person,
-                    contentDescription = null,
+                    contentDescription = "点击更换头像",
                     modifier = Modifier
                         .size(64.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                        .clickable(onClick = onAvatarClick)
                         .padding(12.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -536,7 +581,7 @@ private fun ProfileHeader(
                     )
                 }
                 Text(
-                    text = "汇率：1 USD = ${profile.usdToCnyRate} CNY",
+                    text = "点击头像可更换",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
                 )

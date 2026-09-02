@@ -1,6 +1,9 @@
 package com.wallet.ui.screen.accounting
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -18,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,9 +37,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.wallet.data.model.Category
@@ -62,29 +68,106 @@ import com.wallet.ui.viewmodel.WalletViewModel
 fun AccountingScreen(viewModel: WalletViewModel) {
     val transactions by viewModel.transactions.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    val profile by viewModel.userProfile.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
     var showStatsSheet by remember { mutableStateOf(false) }
+    var wallpaperOnlyMode by remember { mutableStateOf(false) }
+    var hasAutoOpenedAdd by remember { mutableStateOf(false) }
 
+    LaunchedEffect(profile.openAddTransactionOnStart) {
+        if (profile.openAddTransactionOnStart && !hasAutoOpenedAdd) {
+            showAddSheet = true
+            hasAutoOpenedAdd = true
+        }
+    }
+
+    val toggleWallpaperMode = {
+        wallpaperOnlyMode = !wallpaperOnlyMode
+        viewModel.setAccountingWallpaperOnly(wallpaperOnlyMode)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(onDoubleTap = { toggleWallpaperMode() })
+            }
+    ) {
+        if (wallpaperOnlyMode) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTapGestures(onDoubleTap = { toggleWallpaperMode() })
+                    },
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Text(
+                    text = "双击恢复界面",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(bottom = 32.dp)
+                )
+            }
+        } else {
+            AccountingContent(
+                viewModel = viewModel,
+                transactions = transactions,
+                accounts = accounts,
+                onShowStats = { showStatsSheet = true },
+                onShowAdd = { showAddSheet = true }
+            )
+        }
+    }
+
+    if (showAddSheet) {
+        AddTransactionSheet(
+            accounts = accounts,
+            onDismiss = { showAddSheet = false },
+            onConfirm = { amount, type, category, note, accountId, excludeFromStats ->
+                viewModel.addTransaction(amount, type, category, note, accountId, excludeFromStats)
+                showAddSheet = false
+            }
+        )
+    }
+
+    if (showStatsSheet) {
+        StatisticsSheet(
+            viewModel = viewModel,
+            onDismiss = { showStatsSheet = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AccountingContent(
+    viewModel: WalletViewModel,
+    transactions: List<Transaction>,
+    accounts: List<com.wallet.data.model.Account>,
+    onShowStats: () -> Unit,
+    onShowAdd: () -> Unit
+) {
     Scaffold(
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
-            TopAppBar(
+            TransparentBarDefaults.AppTopAppBar(
+                modifier = Modifier.statusBarsPadding(),
                 title = { Text("记账") },
                 actions = {
-                    IconButton(onClick = { showStatsSheet = true }) {
+                    IconButton(onClick = onShowStats) {
                         Icon(
                             Icons.Default.BarChart,
                             contentDescription = "统计"
                         )
                     }
-                },
-                colors = TransparentBarDefaults.topAppBarColors()
+                }
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddSheet = true },
+                onClick = onShowAdd,
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(Icons.Default.Add, contentDescription = "添加记账")
@@ -128,24 +211,6 @@ fun AccountingScreen(viewModel: WalletViewModel) {
                 }
             }
         }
-    }
-
-    if (showAddSheet) {
-        AddTransactionSheet(
-            accounts = accounts,
-            onDismiss = { showAddSheet = false },
-            onConfirm = { amount, type, category, note, accountId ->
-                viewModel.addTransaction(amount, type, category, note, accountId)
-                showAddSheet = false
-            }
-        )
-    }
-
-    if (showStatsSheet) {
-        StatisticsSheet(
-            viewModel = viewModel,
-            onDismiss = { showStatsSheet = false }
-        )
     }
 }
 
@@ -193,12 +258,30 @@ private fun TransactionItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = transaction.category,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = transaction.category,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (transaction.excludeFromStats) {
+                        Text(
+                            text = "不计收支",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
                 if (transaction.note.isNotBlank()) {
                     Text(
                         text = transaction.note,
@@ -266,7 +349,7 @@ private fun TransactionItem(
 private fun AddTransactionSheet(
     accounts: List<com.wallet.data.model.Account>,
     onDismiss: () -> Unit,
-    onConfirm: (Double, TransactionType, String, String, String) -> Unit
+    onConfirm: (Double, TransactionType, String, String, String, Boolean) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var amountText by remember { mutableStateOf("") }
@@ -274,6 +357,7 @@ private fun AddTransactionSheet(
     var selectedType by remember { mutableStateOf(TransactionType.EXPENSE) }
     var selectedCategory by remember { mutableStateOf(expenseCategories.first()) }
     var selectedAccountId by remember { mutableStateOf(accounts.firstOrNull()?.id ?: "") }
+    var excludeFromStats by remember { mutableStateOf(false) }
 
     val categories = if (selectedType == TransactionType.EXPENSE) {
         expenseCategories
@@ -363,11 +447,39 @@ private fun AddTransactionSheet(
                 singleLine = true
             )
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = excludeFromStats,
+                    onCheckedChange = { excludeFromStats = it }
+                )
+                Column {
+                    Text(
+                        text = "不计入收支",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "勾选后不影响本月收支与统计",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
             TextButton(
                 onClick = {
                     val amount = amountText.toDoubleOrNull()
                     if (amount != null && amount > 0 && selectedAccountId.isNotEmpty()) {
-                        onConfirm(amount, selectedType, selectedCategory.name, note, selectedAccountId)
+                        onConfirm(
+                            amount,
+                            selectedType,
+                            selectedCategory.name,
+                            note,
+                            selectedAccountId,
+                            excludeFromStats
+                        )
                     }
                 },
                 modifier = Modifier

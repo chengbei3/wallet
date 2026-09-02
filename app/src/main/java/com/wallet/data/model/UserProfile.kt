@@ -8,10 +8,13 @@ data class UserProfile(
     val notificationsEnabled: Boolean = true,
     val usdToCnyRate: Double = 7.25,
     val wallpaperOverlayAlpha: Float = 0.55f,
+    val tabBarOverlayAlpha: Float = 0f,
     val fontScale: FontScale = FontScale.NORMAL,
     val splashImageUri: String? = null,
     val customAppIconUri: String? = null,
+    val avatarUri: String? = null,
     val launcherIconStyle: LauncherIconStyle = LauncherIconStyle.DEFAULT,
+    val openAddTransactionOnStart: Boolean = true,
     val accountingWallpaperUri: String? = null,
     val assetsWallpaperUri: String? = null,
     val profileWallpaperUri: String? = null

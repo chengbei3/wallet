@@ -9,5 +9,6 @@ data class Transaction(
     val category: String,
     val note: String = "",
     val accountId: String,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val excludeFromStats: Boolean = false
 )

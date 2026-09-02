@@ -41,6 +41,7 @@ object WalletDataSerializer {
                     .put("note", tx.note)
                     .put("accountId", tx.accountId)
                     .put("timestamp", tx.timestamp)
+                    .put("excludeFromStats", tx.excludeFromStats)
             )
         }
         return array
@@ -59,7 +60,8 @@ object WalletDataSerializer {
                         category = item.getString("category"),
                         note = item.optString("note", ""),
                         accountId = item.getString("accountId"),
-                        timestamp = item.getLong("timestamp")
+                        timestamp = item.getLong("timestamp"),
+                        excludeFromStats = item.optBoolean("excludeFromStats", false)
                     )
                 )
             }

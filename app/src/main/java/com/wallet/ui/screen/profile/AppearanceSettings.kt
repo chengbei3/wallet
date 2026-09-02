@@ -126,6 +126,51 @@ fun WallpaperOverlaySheet(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TabBarOverlaySheet(
+    currentAlpha: Float,
+    onDismiss: () -> Unit,
+    onConfirm: (Float) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var alpha by remember { mutableFloatStateOf(currentAlpha) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "底部标签栏透明度",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "0% 为完全透明，调高可让标签更易辨认",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "${(alpha * 100).toInt()}%",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Slider(
+                value = alpha,
+                onValueChange = { alpha = it },
+                valueRange = 0f..0.9f
+            )
+            TextButton(onClick = { onConfirm(alpha) }, modifier = Modifier.fillMaxWidth()) {
+                Text("保存")
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun LauncherIconSheet(
