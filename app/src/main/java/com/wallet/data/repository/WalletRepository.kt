@@ -125,7 +125,8 @@ class WalletRepository(context: Context) {
         category: String,
         note: String,
         accountId: String,
-        excludeFromStats: Boolean = false
+        excludeFromStats: Boolean = false,
+        applyToBalance: Boolean = true
     ) {
         val transaction = Transaction(
             amount = amount,
@@ -137,13 +138,15 @@ class WalletRepository(context: Context) {
         )
         _transactions.update { listOf(transaction) + it }
 
-        _accounts.update { accounts ->
-            accounts.map { account ->
-                if (account.id == accountId) {
-                    val delta = if (type == TransactionType.INCOME) amount else -amount
-                    account.copy(balance = account.balance + delta)
-                } else {
-                    account
+        if (applyToBalance) {
+            _accounts.update { accounts ->
+                accounts.map { account ->
+                    if (account.id == accountId) {
+                        val delta = if (type == TransactionType.INCOME) amount else -amount
+                        account.copy(balance = account.balance + delta)
+                    } else {
+                        account
+                    }
                 }
             }
         }
@@ -168,6 +171,39 @@ class WalletRepository(context: Context) {
             }
         }
         persistSnapshot()
+    }
+
+    fun updateTransaction(updated: Transaction) {
+        val existing = _transactions.value.find { it.id == updated.id } ?: return
+        _transactions.update { list ->
+            list.map { if (it.id == updated.id) updated else it }
+                .sortedByDescending { it.timestamp }
+        }
+        _accounts.update { accounts ->
+            accounts.map { account ->
+                var balance = account.balance
+                if (account.id == existing.accountId) {
+                    balance -= transactionDelta(existing)
+                }
+                if (account.id == updated.accountId) {
+                    balance += transactionDelta(updated)
+                }
+                if (balance != account.balance) {
+                    account.copy(balance = balance)
+                } else {
+                    account
+                }
+            }
+        }
+        persistSnapshot()
+    }
+
+    private fun transactionDelta(transaction: Transaction): Double {
+        return if (transaction.type == TransactionType.INCOME) {
+            transaction.amount
+        } else {
+            -transaction.amount
+        }
     }
 
     fun addAccount(name: String, balance: Double, currency: CurrencyType) {

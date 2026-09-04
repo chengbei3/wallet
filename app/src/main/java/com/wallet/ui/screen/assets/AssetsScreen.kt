@@ -1,5 +1,6 @@
 package com.wallet.ui.screen.assets
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,11 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Payments
-import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -40,14 +37,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.wallet.data.model.Account
 import com.wallet.data.model.CurrencyType
+import com.wallet.data.model.Transaction
+import com.wallet.data.model.TransactionType
 import com.wallet.ui.components.SummaryCard
 import com.wallet.ui.components.TransparentBarDefaults
 import com.wallet.ui.components.formatCurrency
+import com.wallet.ui.components.formatDate
 import com.wallet.ui.theme.AppCard
 import com.wallet.ui.theme.AppCardColors
 import com.wallet.util.ExchangeRates
@@ -60,8 +59,12 @@ fun AssetsScreen(
     topBarAlpha: Float = 0f
 ) {
     val accounts by viewModel.accounts.collectAsState()
+    val transactions by viewModel.transactions.collectAsState()
     val profile by viewModel.userProfile.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
+    var ledgerAccount by remember { mutableStateOf<Account?>(null) }
+    var editingBalanceAccount by remember { mutableStateOf<Account?>(null) }
+    var pendingBalanceAdjust by remember { mutableStateOf<Pair<Account, Double>?>(null) }
 
     val totalAssets = viewModel.getTotalAssets(profile.usdToCnyRate)
     val usdTotal = accounts.filter { it.currency == CurrencyType.USD }.sumOf { it.balance }
@@ -122,6 +125,8 @@ fun AssetsScreen(
                         AccountItem(
                             account = account,
                             usdToCnyRate = profile.usdToCnyRate,
+                            onNameClick = { ledgerAccount = account },
+                            onBalanceClick = { editingBalanceAccount = account },
                             onDelete = { viewModel.deleteAccount(account.id) }
                         )
                     }
@@ -138,16 +143,83 @@ fun AssetsScreen(
             }
         )
     }
+
+    ledgerAccount?.let { account ->
+        AccountLedgerSheet(
+            account = account,
+            transactions = transactions.filter { it.accountId == account.id },
+            onDismiss = { ledgerAccount = null }
+        )
+    }
+
+    editingBalanceAccount?.let { account ->
+        EditAccountBalanceSheet(
+            account = account,
+            onDismiss = { editingBalanceAccount = null },
+            onConfirm = { newBalance ->
+                editingBalanceAccount = null
+                if (newBalance != account.balance) {
+                    pendingBalanceAdjust = account to newBalance
+                } else {
+                    viewModel.updateAccount(account.copy(balance = newBalance))
+                }
+            }
+        )
+    }
+
+    pendingBalanceAdjust?.let { (account, newBalance) ->
+        val delta = newBalance - account.balance
+        val deltaText = if (delta > 0) {
+            "+${formatCurrency(delta, account.currency)}"
+        } else {
+            formatCurrency(delta, account.currency)
+        }
+        AlertDialog(
+            onDismissRequest = { pendingBalanceAdjust = null },
+            title = { Text("生成差额账单？") },
+            text = {
+                Text(
+                    "余额将从 ${formatCurrency(account.balance, account.currency)} 改为 ${formatCurrency(newBalance, account.currency)}，差额 $deltaText。\n\n生成后可在该账户流水中查看，且不计入本月收支统计。"
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.adjustAccountBalance(account, newBalance, createDifferenceBill = true)
+                        pendingBalanceAdjust = null
+                    }
+                ) {
+                    Text("生成账单")
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            viewModel.adjustAccountBalance(account, newBalance, createDifferenceBill = false)
+                            pendingBalanceAdjust = null
+                        }
+                    ) {
+                        Text("仅改余额")
+                    }
+                    TextButton(onClick = { pendingBalanceAdjust = null }) {
+                        Text("取消")
+                    }
+                }
+            }
+        )
+    }
 }
 
 @Composable
 private fun AccountItem(
     account: Account,
     usdToCnyRate: Double,
+    onNameClick: () -> Unit,
+    onBalanceClick: () -> Unit,
     onDelete: () -> Unit
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
-    val icon = getAccountIcon(account.name)
 
     AppCard(
         modifier = Modifier.fillMaxWidth(),
@@ -161,33 +233,29 @@ private fun AccountItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(onClick = onNameClick)
+                    .padding(end = 12.dp)
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(36.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                Text(
+                    text = account.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                Column {
-                    Text(
-                        text = account.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = account.currency.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = account.currency.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(horizontalAlignment = Alignment.End) {
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    modifier = Modifier.clickable(onClick = onBalanceClick)
+                ) {
                     Text(
                         text = formatCurrency(account.balance, account.currency),
                         style = MaterialTheme.typography.titleSmall,
@@ -236,12 +304,92 @@ private fun AccountItem(
     }
 }
 
-private fun getAccountIcon(name: String): ImageVector {
-    return when {
-        name.contains("现金") -> Icons.Default.Payments
-        name.contains("银行") || name.contains("储蓄") -> Icons.Default.Savings
-        name.contains("信用") -> Icons.Default.CreditCard
-        else -> Icons.Default.AccountBalanceWallet
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AccountLedgerSheet(
+    account: Account,
+    transactions: List<Transaction>,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = "${account.name}流水",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "当前余额 ${formatCurrency(account.balance, account.currency)} · 共 ${transactions.size} 笔",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
+            )
+
+            if (transactions.isEmpty()) {
+                Text(
+                    text = "该账户暂无流水",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 32.dp)
+                )
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(transactions, key = { it.id }) { transaction ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = transaction.category,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                val detail = buildString {
+                                    if (transaction.note.isNotBlank()) {
+                                        append(transaction.note)
+                                        append(" · ")
+                                    }
+                                    append(formatDate(transaction.timestamp))
+                                }
+                                Text(
+                                    text = detail,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                text = if (transaction.type == TransactionType.INCOME) {
+                                    "+${formatCurrency(transaction.amount, account.currency)}"
+                                } else {
+                                    "-${formatCurrency(transaction.amount, account.currency)}"
+                                },
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (transaction.type == TransactionType.INCOME) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -314,6 +462,67 @@ private fun AddAccountSheet(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("确认添加", style = MaterialTheme.typography.titleMedium)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditAccountBalanceSheet(
+    account: Account,
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var balanceText by remember {
+        mutableStateOf(
+            if (account.balance == account.balance.toLong().toDouble()) {
+                account.balance.toLong().toString()
+            } else {
+                String.format(java.util.Locale.US, "%.2f", account.balance).trimEnd('0').trimEnd('.')
+            }
+        )
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "修改「${account.name}」余额",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "当前余额 ${formatCurrency(account.balance, account.currency)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedTextField(
+                value = balanceText,
+                onValueChange = { balanceText = it },
+                label = { Text("新余额（${account.currency.label}）") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            TextButton(
+                onClick = {
+                    val newBalance = balanceText.toDoubleOrNull()
+                    if (newBalance != null) {
+                        onConfirm(newBalance)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("确定", style = MaterialTheme.typography.titleMedium)
             }
         }
     }

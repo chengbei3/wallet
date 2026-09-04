@@ -63,8 +63,40 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
         repository.addTransaction(amount, type, category, note, accountId, excludeFromStats)
     }
 
+    fun adjustAccountBalance(
+        account: Account,
+        newBalance: Double,
+        createDifferenceBill: Boolean
+    ) {
+        val delta = newBalance - account.balance
+        repository.updateAccount(account.copy(balance = newBalance))
+        if (createDifferenceBill && delta != 0.0) {
+            repository.addTransaction(
+                amount = kotlin.math.abs(delta),
+                type = if (delta > 0) TransactionType.INCOME else TransactionType.EXPENSE,
+                category = "余额调整",
+                note = "余额从 ${formatPlainAmount(account.balance)} 调整为 ${formatPlainAmount(newBalance)}",
+                accountId = account.id,
+                excludeFromStats = true,
+                applyToBalance = false
+            )
+        }
+    }
+
+    private fun formatPlainAmount(amount: Double): String {
+        return if (amount == amount.toLong().toDouble()) {
+            amount.toLong().toString()
+        } else {
+            String.format(java.util.Locale.US, "%.2f", amount).trimEnd('0').trimEnd('.')
+        }
+    }
+
     fun deleteTransaction(transaction: Transaction) {
         repository.deleteTransaction(transaction)
+    }
+
+    fun updateTransaction(transaction: Transaction) {
+        repository.updateTransaction(transaction)
     }
 
     fun getTotalAssets(usdToCnyRate: Double): Double {
