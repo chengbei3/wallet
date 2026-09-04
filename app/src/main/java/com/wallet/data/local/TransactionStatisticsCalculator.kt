@@ -16,7 +16,7 @@ object TransactionStatisticsCalculator {
         year: Int,
         month: Int
     ): PeriodStatistics {
-        val statsTransactions = transactions.filter { !it.excludeFromStats }
+        val statsTransactions = transactions.filter { !it.excludeFromStats && !it.isTransfer }
 
         val filtered = when (period) {
             StatisticsPeriod.MONTH -> statsTransactions.filter { tx ->

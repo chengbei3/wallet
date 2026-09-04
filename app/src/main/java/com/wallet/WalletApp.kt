@@ -55,7 +55,11 @@ fun WalletApp(viewModel: WalletViewModel = viewModel()) {
     CompositionLocalProvider(LocalCardBackgroundAlpha provides profile.cardBackgroundAlpha) {
         WallpaperBackground(
             wallpaperUri = wallpaperUri,
-            overlayAlpha = profile.wallpaperOverlayAlpha
+            overlayAlpha = if (currentScreen == Screen.Accounting) {
+                profile.accountingOverlayAlpha
+            } else {
+                profile.wallpaperOverlayAlpha
+            }
         ) {
             Scaffold(
                 containerColor = Color.Transparent,

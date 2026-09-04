@@ -153,20 +153,104 @@ class WalletRepository(context: Context) {
         persistSnapshot()
     }
 
-    fun deleteTransaction(transaction: Transaction) {
-        _transactions.update { it.filter { t -> t.id != transaction.id } }
+    fun transferBetweenAccounts(
+        fromAccountId: String,
+        toAccountId: String,
+        amount: Double,
+        fee: Double,
+        usdToCnyRate: Double
+    ) {
+        if (fromAccountId == toAccountId) return
+        val from = _accounts.value.find { it.id == fromAccountId } ?: return
+        val to = _accounts.value.find { it.id == toAccountId } ?: return
+        val sendAmount = ExchangeRates.roundMoney(amount)
+        val feeAmount = ExchangeRates.roundMoney(fee.coerceAtLeast(0.0))
+        if (sendAmount <= 0.0) return
+
+        val received = when {
+            from.currency == to.currency -> sendAmount
+            from.currency == CurrencyType.USD && to.currency == CurrencyType.CNY ->
+                ExchangeRates.roundMoney(sendAmount * usdToCnyRate)
+            from.currency == CurrencyType.CNY && to.currency == CurrencyType.USD ->
+                ExchangeRates.roundMoney(sendAmount / usdToCnyRate)
+            else -> sendAmount
+        }
+
+        val rate = ExchangeRates.normalize(usdToCnyRate)
+        val note = buildString {
+            append("转到${to.name}")
+            if (from.currency != to.currency) {
+                append("，汇率 ${ExchangeRates.format(rate)}")
+            }
+            if (feeAmount > 0.0) {
+                append("，手续费 ${from.currency.symbol}${plainAmount(feeAmount)}")
+            }
+        }
+
+        val transaction = Transaction(
+            amount = sendAmount,
+            type = TransactionType.EXPENSE,
+            category = "账户互转",
+            note = note,
+            accountId = from.id,
+            excludeFromStats = true,
+            isTransfer = true,
+            relatedAccountId = to.id,
+            counterAmount = received,
+            transferFee = feeAmount
+        )
 
         _accounts.update { accounts ->
             accounts.map { account ->
-                if (account.id == transaction.accountId) {
-                    val delta = if (transaction.type == TransactionType.INCOME) {
-                        -transaction.amount
-                    } else {
-                        transaction.amount
+                when (account.id) {
+                    from.id -> account.copy(balance = account.balance - sendAmount - feeAmount)
+                    to.id -> account.copy(balance = account.balance + received)
+                    else -> account
+                }
+            }
+        }
+        _transactions.update { listOf(transaction) + it }
+        persistSnapshot()
+    }
+
+    fun bindCategoryAccount(category: String, accountId: String) {
+        if (category.isBlank() || accountId.isBlank()) return
+        updateProfile(
+            _userProfile.value.copy(
+                categoryAccountBindings = _userProfile.value.categoryAccountBindings + (category to accountId)
+            )
+        )
+    }
+
+    fun deleteTransaction(transaction: Transaction) {
+        _transactions.update { it.filter { t -> t.id != transaction.id } }
+
+        if (transaction.isTransfer) {
+            val toId = transaction.relatedAccountId
+            _accounts.update { accounts ->
+                accounts.map { account ->
+                    when (account.id) {
+                        transaction.accountId ->
+                            account.copy(balance = account.balance + transaction.amount + transaction.transferFee)
+                        toId ->
+                            account.copy(balance = account.balance - transaction.counterAmount)
+                        else -> account
                     }
-                    account.copy(balance = account.balance + delta)
-                } else {
-                    account
+                }
+            }
+        } else {
+            _accounts.update { accounts ->
+                accounts.map { account ->
+                    if (account.id == transaction.accountId) {
+                        val delta = if (transaction.type == TransactionType.INCOME) {
+                            -transaction.amount
+                        } else {
+                            transaction.amount
+                        }
+                        account.copy(balance = account.balance + delta)
+                    } else {
+                        account
+                    }
                 }
             }
         }
@@ -174,7 +258,9 @@ class WalletRepository(context: Context) {
     }
 
     fun updateTransaction(updated: Transaction) {
+        if (updated.isTransfer) return
         val existing = _transactions.value.find { it.id == updated.id } ?: return
+        if (existing.isTransfer) return
         _transactions.update { list ->
             list.map { if (it.id == updated.id) updated else it }
                 .sortedByDescending { it.timestamp }
@@ -295,6 +381,14 @@ class WalletRepository(context: Context) {
     fun getMonthlyExpense(): Double {
         val (year, month) = TransactionStatisticsCalculator.getCurrentYearMonth()
         return getStatistics(StatisticsPeriod.MONTH, year, month).expense
+    }
+
+    private fun plainAmount(amount: Double): String {
+        return if (amount == amount.toLong().toDouble()) {
+            amount.toLong().toString()
+        } else {
+            ExchangeRates.format(amount)
+        }
     }
 
     private fun persistSnapshot() {

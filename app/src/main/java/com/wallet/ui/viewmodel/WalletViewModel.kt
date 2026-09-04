@@ -75,7 +75,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                 amount = kotlin.math.abs(delta),
                 type = if (delta > 0) TransactionType.INCOME else TransactionType.EXPENSE,
                 category = "余额调整",
-                note = "余额从 ${formatPlainAmount(account.balance)} 调整为 ${formatPlainAmount(newBalance)}",
+                note = "余额从 ${account.currency.symbol}${formatPlainAmount(account.balance)} 调整为 ${account.currency.symbol}${formatPlainAmount(newBalance)}",
                 accountId = account.id,
                 excludeFromStats = true,
                 applyToBalance = false
@@ -101,6 +101,20 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
 
     fun getTotalAssets(usdToCnyRate: Double): Double {
         return repository.calculateTotalAssets(accounts.value, usdToCnyRate)
+    }
+
+    fun transferBetweenAccounts(
+        fromAccountId: String,
+        toAccountId: String,
+        amount: Double,
+        fee: Double,
+        usdToCnyRate: Double
+    ) {
+        repository.transferBetweenAccounts(fromAccountId, toAccountId, amount, fee, usdToCnyRate)
+    }
+
+    fun bindCategoryAccount(category: String, accountId: String) {
+        repository.bindCategoryAccount(category, accountId)
     }
 
     fun addAccount(name: String, balance: Double, currency: CurrencyType) {

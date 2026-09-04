@@ -92,7 +92,12 @@ class WalletPreferences(context: Context) {
             openAddTransactionOnStart = prefs.getBoolean(KEY_OPEN_ADD_ON_START, true),
             accountingWallpaperUri = prefs.getString(KEY_ACCOUNTING_WALLPAPER, null),
             assetsWallpaperUri = prefs.getString(KEY_ASSETS_WALLPAPER, null),
-            profileWallpaperUri = prefs.getString(KEY_PROFILE_WALLPAPER, null)
+            profileWallpaperUri = prefs.getString(KEY_PROFILE_WALLPAPER, null),
+            accountingOverlayAlpha = prefs.getFloat(
+                KEY_ACCOUNTING_OVERLAY_ALPHA,
+                prefs.getFloat(KEY_WALLPAPER_OVERLAY_ALPHA, 0.55f)
+            ),
+            categoryAccountBindings = loadCategoryAccountBindings()
         )
     }
 
@@ -117,6 +122,8 @@ class WalletPreferences(context: Context) {
             .putString(KEY_ACCOUNTING_WALLPAPER, profile.accountingWallpaperUri)
             .putString(KEY_ASSETS_WALLPAPER, profile.assetsWallpaperUri)
             .putString(KEY_PROFILE_WALLPAPER, profile.profileWallpaperUri)
+            .putFloat(KEY_ACCOUNTING_OVERLAY_ALPHA, profile.accountingOverlayAlpha)
+            .putString(KEY_CATEGORY_ACCOUNTS, categoryAccountBindingsToJson(profile.categoryAccountBindings))
             .apply()
     }
 
@@ -138,6 +145,30 @@ class WalletPreferences(context: Context) {
             is Double -> ExchangeRates.normalize(value)
             else -> ExchangeRates.normalize(7.25)
         }
+    }
+
+    private fun loadCategoryAccountBindings(): Map<String, String> {
+        val json = prefs.getString(KEY_CATEGORY_ACCOUNTS, null) ?: return emptyMap()
+        return try {
+            val obj = JSONObject(json)
+            buildMap {
+                val keys = obj.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    put(key, obj.getString(key))
+                }
+            }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    private fun categoryAccountBindingsToJson(bindings: Map<String, String>): String {
+        val obj = JSONObject()
+        bindings.forEach { (category, accountId) ->
+            obj.put(category, accountId)
+        }
+        return obj.toString()
     }
 
     companion object {
@@ -163,6 +194,8 @@ class WalletPreferences(context: Context) {
         private const val KEY_ACCOUNTING_WALLPAPER = "accounting_wallpaper"
         private const val KEY_ASSETS_WALLPAPER = "assets_wallpaper"
         private const val KEY_PROFILE_WALLPAPER = "profile_wallpaper"
+        private const val KEY_ACCOUNTING_OVERLAY_ALPHA = "accounting_overlay_alpha"
+        private const val KEY_CATEGORY_ACCOUNTS = "category_account_bindings"
         private const val KEY_TOTAL_ASSETS = "total_assets"
     }
 }

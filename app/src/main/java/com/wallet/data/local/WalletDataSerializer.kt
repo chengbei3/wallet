@@ -42,6 +42,10 @@ object WalletDataSerializer {
                     .put("accountId", tx.accountId)
                     .put("timestamp", tx.timestamp)
                     .put("excludeFromStats", tx.excludeFromStats)
+                    .put("isTransfer", tx.isTransfer)
+                    .put("relatedAccountId", tx.relatedAccountId ?: "")
+                    .put("counterAmount", tx.counterAmount)
+                    .put("transferFee", tx.transferFee)
             )
         }
         return array
@@ -61,7 +65,11 @@ object WalletDataSerializer {
                         note = item.optString("note", ""),
                         accountId = item.getString("accountId"),
                         timestamp = item.getLong("timestamp"),
-                        excludeFromStats = item.optBoolean("excludeFromStats", false)
+                        excludeFromStats = item.optBoolean("excludeFromStats", false),
+                        isTransfer = item.optBoolean("isTransfer", false),
+                        relatedAccountId = item.optString("relatedAccountId").ifBlank { null },
+                        counterAmount = item.optDouble("counterAmount", 0.0),
+                        transferFee = item.optDouble("transferFee", 0.0)
                     )
                 )
             }

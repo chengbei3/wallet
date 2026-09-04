@@ -95,6 +95,7 @@ fun ProfileScreen(
     var showRateSheet by remember { mutableStateOf(false) }
     var showFontScaleSheet by remember { mutableStateOf(false) }
     var showOverlaySheet by remember { mutableStateOf(false) }
+    var showAccountingOverlaySheet by remember { mutableStateOf(false) }
     var showCardBgSheet by remember { mutableStateOf(false) }
     var showTabBarSheet by remember { mutableStateOf(false) }
     var showIconSheet by remember { mutableStateOf(false) }
@@ -295,6 +296,12 @@ fun ProfileScreen(
                             onClick = { showOverlaySheet = true }
                         ),
                         SettingsItem(
+                            icon = Icons.Default.Layers,
+                            title = "记账页遮罩浓度",
+                            subtitle = "${(profile.accountingOverlayAlpha * 100).toInt()}%，仅作用于记账页",
+                            onClick = { showAccountingOverlaySheet = true }
+                        ),
+                        SettingsItem(
                             icon = Icons.Default.Image,
                             title = "卡片背景透明度",
                             subtitle = "${(profile.cardBackgroundAlpha * 100).toInt()}%，调低可让文字区域更通透",
@@ -437,6 +444,17 @@ fun ProfileScreen(
             onConfirm = { alpha ->
                 viewModel.updateProfile(profile.copy(wallpaperOverlayAlpha = alpha))
                 showOverlaySheet = false
+            }
+        )
+    }
+
+    if (showAccountingOverlaySheet) {
+        AccountingOverlaySheet(
+            currentAlpha = profile.accountingOverlayAlpha,
+            onDismiss = { showAccountingOverlaySheet = false },
+            onConfirm = { alpha ->
+                viewModel.updateProfile(profile.copy(accountingOverlayAlpha = alpha))
+                showAccountingOverlaySheet = false
             }
         )
     }

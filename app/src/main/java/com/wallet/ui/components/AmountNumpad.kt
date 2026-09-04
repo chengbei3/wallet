@@ -60,7 +60,8 @@ fun appendAmountInput(current: String, key: String): String {
 @Composable
 fun AmountNumpad(
     onKey: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compact: Boolean = false
 ) {
     val keys = listOf(
         listOf("1", "2", "3"),
@@ -68,19 +69,21 @@ fun AmountNumpad(
         listOf("7", "8", "9"),
         listOf(".", "0", "DEL")
     )
+    val spacing = if (compact) 4.dp else 8.dp
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(spacing)
     ) {
         keys.forEach { row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(spacing)
             ) {
                 row.forEach { key ->
                     NumpadKey(
                         key = key,
                         onClick = { onKey(key) },
+                        compact = compact,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -93,7 +96,8 @@ fun AmountNumpad(
 private fun NumpadKey(
     key: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compact: Boolean = false
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
@@ -103,10 +107,10 @@ private fun NumpadKey(
 
     Box(
         modifier = modifier
-            .height(52.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .height(if (compact) 40.dp else 52.dp)
+            .clip(RoundedCornerShape(if (compact) 10.dp else 12.dp))
             .background(background)
-            .border(width = 1.5.dp, color = border, shape = RoundedCornerShape(12.dp))
+            .border(width = 1.5.dp, color = border, shape = RoundedCornerShape(if (compact) 10.dp else 12.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -119,13 +123,13 @@ private fun NumpadKey(
                 imageVector = Icons.AutoMirrored.Filled.Backspace,
                 contentDescription = "删除",
                 tint = content,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(if (compact) 18.dp else 22.dp)
             )
         } else {
             Text(
                 text = key,
                 color = content,
-                fontSize = 22.sp,
+                fontSize = if (compact) 18.sp else 22.sp,
                 fontWeight = FontWeight.SemiBold
             )
         }

@@ -18,4 +18,10 @@ object ExchangeRates {
             .setScale(SCALE, RoundingMode.HALF_UP)
             .toPlainString()
     }
+
+    fun roundMoney(amount: Double): Double {
+        return BigDecimal(amount.toString())
+            .setScale(SCALE, RoundingMode.HALF_UP)
+            .toDouble()
+    }
 }

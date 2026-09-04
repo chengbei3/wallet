@@ -19,5 +19,7 @@ data class UserProfile(
     val openAddTransactionOnStart: Boolean = true,
     val accountingWallpaperUri: String? = null,
     val assetsWallpaperUri: String? = null,
-    val profileWallpaperUri: String? = null
+    val profileWallpaperUri: String? = null,
+    val accountingOverlayAlpha: Float = 0.55f,
+    val categoryAccountBindings: Map<String, String> = emptyMap()
 )

@@ -163,6 +163,23 @@ fun TabBarOverlaySheet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun AccountingOverlaySheet(
+    currentAlpha: Float,
+    onDismiss: () -> Unit,
+    onConfirm: (Float) -> Unit
+) {
+    OverlayAlphaSheet(
+        title = "记账页遮罩浓度",
+        description = "仅作用于记账页背景遮罩，调低可让记账页壁纸更清晰",
+        currentAlpha = currentAlpha,
+        valueRange = 0f..0.85f,
+        onDismiss = onDismiss,
+        onConfirm = onConfirm
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun OverlayAlphaSheet(
     title: String,
     description: String,

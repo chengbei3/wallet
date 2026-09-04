@@ -7,24 +7,22 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
@@ -56,12 +54,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.wallet.data.model.Account
+import com.wallet.data.model.CurrencyType
 import com.wallet.data.model.Transaction
 import com.wallet.data.model.TransactionType
 import com.wallet.data.model.expenseCategories
@@ -133,7 +132,7 @@ fun AccountingScreen(
         } else {
             AccountingContent(
                 viewModel = viewModel,
-                transactions = transactions,
+                transactions = transactions.filter { !it.isTransfer },
                 accounts = accounts,
                 topBarAlpha = topBarAlpha,
                 onShowStats = { showStatsSheet = true },
@@ -148,11 +147,14 @@ fun AccountingScreen(
         AddTransactionSheet(
             accounts = accounts,
             existing = editing,
+            bindings = profile.categoryAccountBindings,
+            sheetAlpha = profile.cardBackgroundAlpha.coerceIn(0.55f, 0.96f),
             onDismiss = {
                 showAddSheet = false
                 editingTransaction = null
             },
             onConfirm = { amount, type, category, note, accountId, excludeFromStats ->
+                viewModel.bindCategoryAccount(category, accountId)
                 if (editing != null) {
                     viewModel.updateTransaction(
                         editing.copy(
@@ -186,7 +188,7 @@ fun AccountingScreen(
 private fun AccountingContent(
     viewModel: WalletViewModel,
     transactions: List<Transaction>,
-    accounts: List<com.wallet.data.model.Account>,
+    accounts: List<Account>,
     topBarAlpha: Float,
     onShowStats: () -> Unit,
     onShowAdd: () -> Unit,
@@ -247,9 +249,11 @@ private fun AccountingContent(
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
                     items(transactions, key = { it.id }) { transaction ->
+                        val account = accounts.find { it.id == transaction.accountId }
                         TransactionItem(
                             transaction = transaction,
-                            accountName = accounts.find { it.id == transaction.accountId }?.name ?: "",
+                            accountName = account?.name.orEmpty(),
+                            currency = account?.currency ?: CurrencyType.CNY,
                             onClick = { onEditTransaction(transaction) },
                             onDelete = { viewModel.deleteTransaction(transaction) }
                         )
@@ -286,6 +290,7 @@ private fun EmptyTransactions() {
 private fun TransactionItem(
     transaction: Transaction,
     accountName: String,
+    currency: CurrencyType,
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -346,9 +351,9 @@ private fun TransactionItem(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = if (transaction.type == TransactionType.INCOME) {
-                        "+${formatCurrency(transaction.amount)}"
+                        "+${formatCurrency(transaction.amount, currency)}"
                     } else {
-                        "-${formatCurrency(transaction.amount)}"
+                        "-${formatCurrency(transaction.amount, currency)}"
                     },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
@@ -392,11 +397,13 @@ private fun TransactionItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun AddTransactionSheet(
-    accounts: List<com.wallet.data.model.Account>,
+    accounts: List<Account>,
     existing: Transaction? = null,
+    bindings: Map<String, String> = emptyMap(),
+    sheetAlpha: Float = 0.88f,
     onDismiss: () -> Unit,
     onConfirm: (Double, TransactionType, String, String, String, Boolean) -> Unit
 ) {
@@ -405,6 +412,10 @@ private fun AddTransactionSheet(
         incomeCategories
     } else {
         expenseCategories
+    }
+    fun boundAccountId(categoryName: String): String? {
+        val bound = bindings[categoryName]
+        return if (bound != null && accounts.any { it.id == bound }) bound else null
     }
     var amountText by remember {
         mutableStateOf(existing?.amount?.let { formatAmountInput(it) } ?: "")
@@ -417,14 +428,19 @@ private fun AddTransactionSheet(
         )
     }
     var selectedAccountId by remember {
-        mutableStateOf(existing?.accountId ?: accounts.firstOrNull()?.id.orEmpty())
+        mutableStateOf(
+            existing?.accountId
+                ?: boundAccountId(initialCategories.first().name)
+                ?: accounts.firstOrNull()?.id.orEmpty()
+        )
     }
     var excludeFromStats by remember { mutableStateOf(existing?.excludeFromStats ?: false) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val noteInteractionSource = remember { MutableInteractionSource() }
     val noteFocused by noteInteractionSource.collectIsFocusedAsState()
-    val sheetHeight = LocalConfiguration.current.screenHeightDp.dp * 0.92f
+    val selectedAccount = accounts.find { it.id == selectedAccountId }
+    val amountSymbol = selectedAccount?.currency?.symbol ?: "¥"
 
     val categories = if (selectedType == TransactionType.EXPENSE) {
         expenseCategories
@@ -434,6 +450,16 @@ private fun AddTransactionSheet(
     val canSubmit = amountText.toDoubleOrNull()?.let { it > 0 } == true &&
         selectedAccountId.isNotEmpty()
 
+    LaunchedEffect(selectedCategory.name, selectedType) {
+        if (existing != null &&
+            selectedCategory.name == existing.category &&
+            selectedType == existing.type
+        ) {
+            return@LaunchedEffect
+        }
+        boundAccountId(selectedCategory.name)?.let { selectedAccountId = it }
+    }
+
     fun typeAmount(key: String) {
         focusManager.clearFocus()
         keyboardController?.hide()
@@ -442,148 +468,131 @@ private fun AddTransactionSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = sheetAlpha),
+        tonalElevation = 0.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(sheetHeight)
-                .navigationBarsPadding()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(
+            Text(
+                text = if (existing != null) "修改记账" else "添加记账",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                HighContrastChip(
+                    selected = selectedType == TransactionType.EXPENSE,
+                    onClick = {
+                        selectedType = TransactionType.EXPENSE
+                        selectedCategory = expenseCategories.first()
+                    },
+                    label = "支出",
+                    selectedContainer = ExpenseRed,
+                    selectedContent = Color.White
+                )
+                HighContrastChip(
+                    selected = selectedType == TransactionType.INCOME,
+                    onClick = {
+                        selectedType = TransactionType.INCOME
+                        selectedCategory = incomeCategories.first()
+                    },
+                    label = "收入",
+                    selectedContainer = IncomeGreen,
+                    selectedContent = Color.White
+                )
+            }
+
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFF161616).copy(alpha = sheetAlpha))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.Bottom
             ) {
                 Text(
-                    text = if (existing != null) "修改记账" else "添加记账",
-                    style = MaterialTheme.typography.titleLarge,
+                    text = amountSymbol,
+                    color = Color(0xFFBDBDBD),
+                    fontSize = 16.sp,
+                    modifier = Modifier.padding(end = 6.dp, bottom = 1.dp)
+                )
+                Text(
+                    text = amountText.ifEmpty { "0" },
+                    color = if (amountText.isEmpty()) Color(0xFF6E6E6E) else Color.White,
+                    fontSize = 26.sp,
                     fontWeight = FontWeight.Bold
                 )
+            }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = "分类",
+                style = MaterialTheme.typography.labelMedium
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                categories.forEach { category ->
                     HighContrastChip(
-                        selected = selectedType == TransactionType.EXPENSE,
-                        onClick = {
-                            selectedType = TransactionType.EXPENSE
-                            selectedCategory = expenseCategories.first()
-                        },
-                        label = "支出",
-                        selectedContainer = ExpenseRed,
-                        selectedContent = Color.White
-                    )
-                    HighContrastChip(
-                        selected = selectedType == TransactionType.INCOME,
-                        onClick = {
-                            selectedType = TransactionType.INCOME
-                            selectedCategory = incomeCategories.first()
-                        },
-                        label = "收入",
-                        selectedContainer = IncomeGreen,
-                        selectedContent = Color.White
+                        selected = selectedCategory == category,
+                        onClick = { selectedCategory = category },
+                        label = category.name
                     )
                 }
+            }
 
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "金额",
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF161616))
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        Text(
-                            text = "¥",
-                            color = Color(0xFFBDBDBD),
-                            fontSize = 20.sp,
-                            modifier = Modifier.padding(end = 8.dp, bottom = 2.dp)
-                        )
-                        Text(
-                            text = amountText.ifEmpty { "0" },
-                            color = if (amountText.isEmpty()) Color(0xFF6E6E6E) else Color.White,
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Text(
-                        text = "请直接使用底部数字键盘输入",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
+            if (accounts.isNotEmpty()) {
                 Text(
-                    text = "分类",
-                    style = MaterialTheme.typography.labelLarge
+                    text = "账户",
+                    style = MaterialTheme.typography.labelMedium
                 )
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(categories) { category ->
-                        HighContrastChip(
-                            selected = selectedCategory == category,
-                            onClick = { selectedCategory = category },
-                            label = category.name
-                        )
-                    }
-                }
-
-                if (accounts.isNotEmpty()) {
-                    Text(
-                        text = "账户",
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(accounts) { account ->
-                            HighContrastChip(
-                                selected = selectedAccountId == account.id,
-                                onClick = { selectedAccountId = account.id },
-                                label = account.name
-                            )
-                        }
-                    }
-                }
-
-                OutlinedTextField(
-                    value = note,
-                    onValueChange = { note = it },
-                    label = { Text("备注（可选）") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    interactionSource = noteInteractionSource
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Checkbox(
-                        checked = excludeFromStats,
-                        onCheckedChange = { excludeFromStats = it }
-                    )
-                    Column {
-                        Text(
-                            text = "不计入收支",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = "勾选后不影响本月收支与统计",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                    accounts.forEach { account ->
+                        HighContrastChip(
+                            selected = selectedAccountId == account.id,
+                            onClick = { selectedAccountId = account.id },
+                            label = account.name
                         )
                     }
                 }
             }
 
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it },
+                label = { Text("备注（可选）") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                interactionSource = noteInteractionSource
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = excludeFromStats,
+                    onCheckedChange = { excludeFromStats = it }
+                )
+                Text(
+                    text = "不计入收支",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
             if (!noteFocused) {
                 AmountNumpad(
                     onKey = { typeAmount(it) },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    compact = true
                 )
             }
 
@@ -604,9 +613,7 @@ private fun AddTransactionSheet(
                 enabled = canSubmit,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 16.dp)
-                    .height(52.dp),
+                    .height(44.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
@@ -617,7 +624,7 @@ private fun AddTransactionSheet(
             ) {
                 Text(
                     text = if (existing != null) "保存修改" else "确认添加",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -650,11 +657,12 @@ private fun HighContrastChip(
             .background(container)
             .border(width = 1.5.dp, color = border, shape = RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .padding(horizontal = 10.dp, vertical = 5.dp)
     ) {
         Text(
             text = label,
             color = content,
+            fontSize = 13.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
         )
     }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -62,6 +63,7 @@ fun AssetsScreen(
     val transactions by viewModel.transactions.collectAsState()
     val profile by viewModel.userProfile.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
+    var showTransferSheet by remember { mutableStateOf(false) }
     var ledgerAccount by remember { mutableStateOf<Account?>(null) }
     var editingBalanceAccount by remember { mutableStateOf<Account?>(null) }
     var pendingBalanceAdjust by remember { mutableStateOf<Pair<Account, Double>?>(null) }
@@ -77,7 +79,14 @@ fun AssetsScreen(
             TransparentBarDefaults.AppTopAppBar(
                 modifier = Modifier.statusBarsPadding(),
                 containerAlpha = topBarAlpha,
-                title = { Text("资产管理") }
+                title = { Text("资产管理") },
+                actions = {
+                    if (accounts.size >= 2) {
+                        IconButton(onClick = { showTransferSheet = true }) {
+                            Icon(Icons.Default.SwapHoriz, contentDescription = "账户互转")
+                        }
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -134,6 +143,18 @@ fun AssetsScreen(
             }
         }
 
+    if (showTransferSheet) {
+        AccountTransferSheet(
+            accounts = accounts,
+            defaultRate = profile.usdToCnyRate,
+            onDismiss = { showTransferSheet = false },
+            onConfirm = { fromId, toId, amount, fee, rate ->
+                viewModel.transferBetweenAccounts(fromId, toId, amount, fee, rate)
+                showTransferSheet = false
+            }
+        )
+    }
+
     if (showAddSheet) {
         AddAccountSheet(
             onDismiss = { showAddSheet = false },
@@ -147,7 +168,10 @@ fun AssetsScreen(
     ledgerAccount?.let { account ->
         AccountLedgerSheet(
             account = account,
-            transactions = transactions.filter { it.accountId == account.id },
+            accounts = accounts,
+            transactions = transactions.filter {
+                it.accountId == account.id || it.relatedAccountId == account.id
+            },
             onDismiss = { ledgerAccount = null }
         )
     }
@@ -308,6 +332,7 @@ private fun AccountItem(
 @Composable
 private fun AccountLedgerSheet(
     account: Account,
+    accounts: List<Account>,
     transactions: List<Transaction>,
     onDismiss: () -> Unit
 ) {
@@ -347,6 +372,34 @@ private fun AccountLedgerSheet(
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
                     items(transactions, key = { it.id }) { transaction ->
+                        val outgoing = transaction.accountId == account.id
+                        val counterpart = if (outgoing) {
+                            accounts.find { it.id == transaction.relatedAccountId }
+                        } else {
+                            accounts.find { it.id == transaction.accountId }
+                        }
+                        val title = if (transaction.isTransfer) {
+                            if (outgoing) "转出到${counterpart?.name ?: "其他账户"}" else "来自${counterpart?.name ?: "其他账户"}"
+                        } else {
+                            transaction.category
+                        }
+                        val amountText = when {
+                            transaction.isTransfer && outgoing -> {
+                                val outAmount = transaction.amount + transaction.transferFee
+                                "-${formatCurrency(outAmount, account.currency)}"
+                            }
+                            transaction.isTransfer -> {
+                                "+${formatCurrency(transaction.counterAmount, account.currency)}"
+                            }
+                            transaction.type == TransactionType.INCOME -> {
+                                "+${formatCurrency(transaction.amount, account.currency)}"
+                            }
+                            else -> {
+                                "-${formatCurrency(transaction.amount, account.currency)}"
+                            }
+                        }
+                        val isPositive = transaction.isTransfer && !outgoing ||
+                            !transaction.isTransfer && transaction.type == TransactionType.INCOME
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -354,7 +407,7 @@ private fun AccountLedgerSheet(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = transaction.category,
+                                    text = title,
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -372,14 +425,10 @@ private fun AccountLedgerSheet(
                                 )
                             }
                             Text(
-                                text = if (transaction.type == TransactionType.INCOME) {
-                                    "+${formatCurrency(transaction.amount, account.currency)}"
-                                } else {
-                                    "-${formatCurrency(transaction.amount, account.currency)}"
-                                },
+                                text = amountText,
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (transaction.type == TransactionType.INCOME) {
+                                color = if (isPositive) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
                                     MaterialTheme.colorScheme.error
