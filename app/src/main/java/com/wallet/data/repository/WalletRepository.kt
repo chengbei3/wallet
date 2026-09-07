@@ -56,6 +56,16 @@ class WalletRepository(context: Context) {
         }
     }
 
+    fun calculateTotalAssetsInUsd(accounts: List<Account>, usdToCnyRate: Double): Double {
+        val rate = usdToCnyRate.takeIf { it > 0.0 }
+        return accounts.sumOf { account ->
+            when (account.currency) {
+                CurrencyType.USD -> account.balance
+                CurrencyType.CNY -> if (rate != null) account.balance / rate else 0.0
+            }
+        }
+    }
+
     fun getStatistics(
         period: StatisticsPeriod,
         year: Int,

@@ -69,6 +69,7 @@ fun AssetsScreen(
     var pendingBalanceAdjust by remember { mutableStateOf<Pair<Account, Double>?>(null) }
 
     val totalAssets = viewModel.getTotalAssets(profile.usdToCnyRate)
+    val totalAssetsUsd = viewModel.getTotalAssetsInUsd(profile.usdToCnyRate)
     val usdTotal = accounts.filter { it.currency == CurrencyType.USD }.sumOf { it.balance }
     val cnyTotal = accounts.filter { it.currency == CurrencyType.CNY }.sumOf { it.balance }
 
@@ -105,11 +106,14 @@ fun AssetsScreen(
                 .padding(horizontal = 16.dp)
         ) {
                 SummaryCard(
-                    title = "总资产（折合人民币）",
+                    title = "总资产",
                     amount = totalAssets,
+                    secondaryTitle = "折合美元",
+                    secondaryAmount = totalAssetsUsd,
+                    secondaryCurrency = CurrencyType.USD,
                     subtitle = buildString {
                         append("人民币 ${formatCurrency(cnyTotal)}")
-                        if (usdTotal > 0) {
+                        if (usdTotal != 0.0) {
                             append(" + 美元 ${formatCurrency(usdTotal, CurrencyType.USD)}")
                             append(" × ${ExchangeRates.format(profile.usdToCnyRate)}")
                         }

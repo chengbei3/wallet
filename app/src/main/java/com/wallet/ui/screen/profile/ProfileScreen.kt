@@ -858,7 +858,7 @@ private fun ExchangeRateSheet(
             )
 
             Text(
-                text = "总资产计算方式：美元账户余额 × 汇率 + 人民币账户余额",
+                text = "总资产会按该汇率同时折合人民币和美元：人民币账户 ÷ 汇率 + 美元账户余额。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

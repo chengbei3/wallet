@@ -103,6 +103,10 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
         return repository.calculateTotalAssets(accounts.value, usdToCnyRate)
     }
 
+    fun getTotalAssetsInUsd(usdToCnyRate: Double): Double {
+        return repository.calculateTotalAssetsInUsd(accounts.value, usdToCnyRate)
+    }
+
     fun transferBetweenAccounts(
         fromAccountId: String,
         toAccountId: String,

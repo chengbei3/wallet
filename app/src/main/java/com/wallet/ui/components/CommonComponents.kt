@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.wallet.data.model.CurrencyType
 import com.wallet.ui.theme.AppCard
@@ -24,6 +25,11 @@ fun SummaryCard(
     title: String,
     amount: Double,
     modifier: Modifier = Modifier,
+    amountLabel: String = "折合人民币",
+    amountCurrency: CurrencyType = CurrencyType.CNY,
+    secondaryTitle: String? = null,
+    secondaryAmount: Double? = null,
+    secondaryCurrency: CurrencyType = CurrencyType.USD,
     subtitle: String? = null
 ) {
     AppCard(
@@ -33,19 +39,39 @@ fun SummaryCard(
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
             )
-            Text(
-                text = formatCurrency(amount),
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            if (secondaryTitle != null && secondaryAmount != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    DualAmountColumn(
+                        label = amountLabel,
+                        amount = amount,
+                        currency = amountCurrency,
+                        modifier = Modifier.weight(1f)
+                    )
+                    DualAmountColumn(
+                        label = secondaryTitle,
+                        amount = secondaryAmount,
+                        currency = secondaryCurrency,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            } else {
+                Text(
+                    text = formatCurrency(amount, amountCurrency),
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
             if (subtitle != null) {
                 Text(
                     text = subtitle,
@@ -54,6 +80,33 @@ fun SummaryCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun DualAmountColumn(
+    label: String,
+    amount: Double,
+    currency: CurrencyType,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.65f)
+        )
+        Text(
+            text = formatCurrency(amount, currency),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
